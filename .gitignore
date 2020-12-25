@@ -1,0 +1,6 @@
+gitgen
+public/*
+!public/style.css
+*~
+*.swp
+*.swo
