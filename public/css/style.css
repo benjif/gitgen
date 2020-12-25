@@ -1,0 +1,118 @@
+@charset "UTF-8";
+
+a {
+    color: blue;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+#header {
+    padding-bottom: 30px;
+}
+
+#content {
+    font-family: monospace;
+    max-width: 102ch;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#filename {
+    padding-bottom: 4px;
+    border-bottom: 1px solid black;
+    width: 100%;
+}
+
+ol#codeblock {
+    margin-left: 0;
+    padding-left: 0;
+    overflow: auto;
+    list-style: none;
+    counter-reset: item;
+    font-size: 12px;
+}
+
+#codeblock li {
+    counter-increment: item;
+}
+
+#codeblock li pre {
+    padding-top: 2px;
+    padding-bottom: 2px;
+    margin: 0;
+}
+
+#codeblock li pre::before {
+    margin-right: 10px;
+    padding-right: 4px;
+    width: 2em;
+    text-align: center;
+    display: inline-block;
+    color: #888;
+    font-size: 12px;
+    content: counter(item);
+}
+
+ul#reponav {
+    list-style-type: none;
+    padding-left: 0;
+    display: block;
+}
+
+#reponav li {
+    margin-right: 16px;
+    float: left;
+}
+
+#reponav a {
+    display: block;
+}
+
+table#commits {
+    width: 100%;
+}
+
+table#commits tr:nth-child(odd) {
+    background-color: #fff;
+}
+
+table#commits tr:nth-child(even) {
+    background-color: #ddd;
+}
+
+table#repotree {
+    width: 100%;
+}
+
+table#repotree tr:nth-child(odd) {
+    background-color: #fff;
+}
+
+table#repotree tr:nth-child(even) {
+    background-color: #ddd;
+}
+
+table#repotree .filename {
+    width: 82%;
+}
+
+table#repotree .filesize {
+    width: 9%:
+}
+
+table#repotree .sizeunit {
+    width: 11%;
+}
+
+tr.toptr td {
+    padding-bottom: 4px;
+    border-bottom: 1px solid black;
+}
+
+#readmeview {
+    margin-top: 20px;
+}
