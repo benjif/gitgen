@@ -18,6 +18,9 @@ R"(<!DOCTYPE html>
 {treecontent}
 </tbody>
 </table>
+<div id="readmeview">
+{readmecontent}
+</div>
 </div>
 </body>
 </html>)"

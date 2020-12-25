@@ -20,12 +20,15 @@ private:
     void error(const char *msg);
 
     git_commit *last_commit();
+    //git_commit *file_last_modified(git_object *obj);
 
     void render_header_content();
 
+    void generate_file_page_code(const std::string &file_path, std::string &html);
     void generate_file_page(const git_index_entry *entry);
     void generate_files();
-    void generate_index(std::string root, git_tree *tree);
+    void generate_index(git_tree *tree, std::string root = "");
+    void generate_commits();
 
     std::string m_repo_path;
     std::string m_repo_name;
@@ -36,6 +39,8 @@ private:
     git_repository *m_repo { nullptr };
     git_index *m_index { nullptr };
     git_tree *m_tree { nullptr };
+
+    const git_index_entry *m_readme { nullptr };
 };
 
 #endif

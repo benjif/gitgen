@@ -7,10 +7,7 @@ R"(<!DOCTYPE html>
 <body>
 <div id="content">
 {headercontent}
-<div id="filename">{filename}</div>
-<ol id="codeblock">
-{filecontent}
-</ol>
+{fileviewcontent}
 </div>
 </body>
 </html>)"

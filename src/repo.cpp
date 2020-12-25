@@ -2,7 +2,9 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <algorithm>
 #include <filesystem>
+#include <unordered_set>
 #include <fmt/core.h>
 #include <fmt/format.h>
 #include "html.h"
@@ -61,8 +63,6 @@ RepoHtmlGen::RepoHtmlGen(const std::string &repo_path)
     if (m_repo_path.back() == '/')
         m_repo_path.pop_back();
 
-    fmt::print("repo path: {}\n", m_repo_path);
-
     size_t path_split_pos = m_repo_path.find_last_of('/');
     if (path_split_pos == std::string::npos)
         m_repo_name = m_repo_path;
@@ -90,38 +90,68 @@ void RepoHtmlGen::render_header_content()
 void RepoHtmlGen::generate()
 {
     generate_files();
-    generate_index("", m_tree);
+    generate_index(m_tree);
+    generate_commits();
+}
+
+void RepoHtmlGen::generate_file_page_code(const std::string &file_path, std::string &html)
+{
+    std::ifstream in_stream(file_path, std::ios::in);
+
+    // TODO: optimize this
+    std::string line;
+    while (std::getline(in_stream, line)) {
+        escape_string(line);
+        html += fmt::format(
+            file_line_template,
+            fmt::arg("line", line)
+        );
+    }
 }
 
 void RepoHtmlGen::generate_file_page(const git_index_entry *entry)
 {
     const std::string file_path = m_repo_path + '/' + entry->path;
-    std::ifstream in_stream(file_path, std::ios::in);
 
     fs::path html_path = "public/" + m_repo_name + "/files/" + std::string(entry->path) + ".html";
     if (!fs::exists(html_path.parent_path()))
         fs::create_directories(html_path.parent_path());
 
-    // TODO: optimize this
-    std::string line, html_file_content;
-    while (std::getline(in_stream, line)) {
-        escape_string(line);
-        html_file_content += fmt::format(
-            file_line_template,
-            fmt::arg("line", line)
-        );
-    }
+    std::string html_file_content;
+    generate_file_page_code(file_path, html_file_content);
 
     std::ofstream out_stream("public/" + m_repo_name + "/files/" + std::string(entry->path) + ".html",
             std::ios::out);
     out_stream << fmt::format(
         file_page_template,
         fmt::arg("headercontent", m_header_content),
-        fmt::arg("filecontent", html_file_content),
         fmt::arg("reponame", m_repo_name),
-        fmt::arg("filename", entry->path)
+        fmt::arg("filename", entry->path),
+        fmt::arg("fileviewcontent",
+            fmt::format(
+                file_view_template,
+                fmt::arg("filename", entry->path),
+                fmt::arg("filecontent", html_file_content)
+            )
+        )
     );
 
+}
+
+static char lowercase(char c)
+{
+    if (c >= 'A' && c <= 'Z')
+        return c - ('Z' - 'z');
+    return c;
+}
+
+static bool is_readme(std::string &filename)
+{
+    std::transform(filename.begin(), filename.end(),
+            filename.begin(), lowercase);
+    if (filename == "readme.md" || filename == "readme.txt")
+        return true;
+    return false;
 }
 
 void RepoHtmlGen::generate_files()
@@ -130,10 +160,42 @@ void RepoHtmlGen::generate_files()
     for (size_t i = 0; i < file_count; i++) {
         auto *entry = git_index_get_byindex(m_index, i);
         generate_file_page(entry);
+
+        std::string filename = std::string(entry->path);
+        if (is_readme(filename))
+           m_readme = entry; 
     }
 }
 
-void RepoHtmlGen::generate_index(std::string root, git_tree *tree)
+/*
+git_commit *RepoHtmlGen::file_last_modified(git_object *obj)
+{
+    git_revwalk *walk = nullptr;
+    if ((m_err = git_revwalk_new(&walk, m_repo)) < 0)
+        error("Failed to create git revwalk");
+
+    const git_oid *obj_oid = git_object_id(obj);
+    git_oid oid;
+
+    git_revwalk_push_head(walk);
+    git_revwalk_sorting(walk, GIT_SORT_TOPOLOGICAL | GIT_SORT_TIME);
+    //git_revwalk_simplify_first_parent(walk);
+
+    while (git_revwalk_next(&oid, walk) == 0) {
+        if (git_oid_cmp(obj_oid, &oid) == 0)
+            break;
+    }
+
+    git_commit *ret = nullptr;
+    if ((m_err = git_commit_lookup(&ret, m_repo, &oid)) < 0)
+        error("failed to lookup commit");
+    git_revwalk_free(walk);
+
+    return ret;
+}
+*/
+
+void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
 {
     fs::path html_path = "public/" + m_repo_name + '/' + root + "index.html";
     if (!fs::exists(html_path.parent_path()))
@@ -160,7 +222,7 @@ void RepoHtmlGen::generate_index(std::string root, git_tree *tree)
         case GIT_OBJ_BLOB:
             break;
         case GIT_OBJ_TREE:
-            generate_index(root + entry_name + '/', (git_tree *)obj);
+            generate_index((git_tree *)obj, root + entry_name + '/');
             tree_html += fmt::format(
                 file_tree_line_dir,
                 fmt::arg("file_tree_name", entry_name),
@@ -182,12 +244,28 @@ void RepoHtmlGen::generate_index(std::string root, git_tree *tree)
         git_object_free(obj);
     }
 
+    std::string readme_code_html;
+    if (m_readme != nullptr)
+        generate_file_page_code(m_repo_path + '/' + m_readme->path, readme_code_html);
+
     out_stream << fmt::format(
         file_index_template,
         fmt::arg("headercontent", m_header_content),
         fmt::arg("reponame", m_repo_name),
         fmt::arg("repodesc", ""), // TODO
         fmt::arg("filespath", '/' + m_repo_name + "/index.html"),
-        fmt::arg("treecontent", tree_html)
+        fmt::arg("treecontent", tree_html),
+        fmt::arg("readmecontent",
+            m_readme == nullptr ? "" :
+                 fmt::format(
+                     file_view_template,
+                     fmt::arg("filename", m_readme->path),
+                     fmt::arg("filecontent", readme_code_html)
+                 )
+        )
     );
+}
+
+void RepoHtmlGen::generate_commits()
+{
 }

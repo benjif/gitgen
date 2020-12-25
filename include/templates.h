@@ -3,6 +3,7 @@
 
 extern const char *header_template;
 extern const char *file_page_template;
+extern const char *file_view_template;
 extern const char *file_line_template;
 extern const char *file_index_template;
 extern const char *file_tree_line;
