@@ -199,7 +199,9 @@ git_commit *RepoHtmlGen::file_last_modified(git_object *obj)
 
 void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
 {
-    fs::path html_path = "public/" + m_repo_name + '/' + root + "index.html";
+    fs::path html_path =
+        root == "" ? "public/" + m_repo_name + "/index.html"
+                   : "public/" + m_repo_name + "/tree/" + root + "index.html";
     if (!fs::exists(html_path.parent_path()))
         fs::create_directories(html_path.parent_path());
 
@@ -226,9 +228,9 @@ void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
         case GIT_OBJ_TREE:
             generate_index((git_tree *)obj, root + entry_name + '/');
             tree_html += fmt::format(
-                file_tree_line_dir,
+                file_tree_line_dir_template,
                 fmt::arg("file_tree_name", entry_name),
-                fmt::arg("file_tree_link", entry_name)
+                fmt::arg("file_tree_link", '/' + m_repo_name + "/tree/" + root + entry_name)
             );
             git_object_free(obj);
             continue;
@@ -237,7 +239,7 @@ void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
         }
 
         tree_html += fmt::format(
-            file_tree_line,
+            file_tree_line_template,
             fmt::arg("file_tree_name", entry_name),
             fmt::arg("file_tree_size", git_blob_rawsize((git_blob *)obj)),
             fmt::arg("file_tree_link", '/' + m_repo_name + "/files/" + root + entry_name + ".html")
