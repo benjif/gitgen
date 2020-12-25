@@ -1,5 +1,16 @@
-R"(<html>
+R"(<!DOCTYPE html>
+<head>
+<title>{filename} - {reponame}</title>
+<meta charset="UTF-8">
+<link rel="stylesheet" type="text/css" href="{csspath}">
+</head>
 <body>
-<h1>{}</h1>
+<div id="content">
+{headercontent}
+<div id="filename">{filename}</div>
+<ol id="codeblock">
+{filecontent}
+</ol>
+</div>
 </body>
 </html>)"

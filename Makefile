@@ -1,15 +1,21 @@
 NAME = gitgen
 
-CFLAGS := -Wall -Wextra -O2 -std=c++20 -lgit2 \
+CFLAGS := -Wall -Wextra -std=c++20 -lgit2 \
 	-L/usr/local/lib -Iinclude -I/usr/local/include -I. \
-	-D FMT_HEADER_ONLY
+	-D FMT_HEADER_ONLY \
+	-g -O0 # TODO: REMOVE LATER
 OBJ_FILES :=	src/gitgen.o \
 				src/templates.o	\
 				src/index.o	\
-				src/repo.o
+				src/repo.o \
+				src/html.o
 
-all: clean $(OBJ_FILES) gitgen
+all: release
 .PHONY: all
+
+release:
+	$(MAKE) clean
+	$(MAKE) gitgen
 
 %.o: %.cpp
 	$(CXX) -c $^ -o $@ $(CFLAGS)
