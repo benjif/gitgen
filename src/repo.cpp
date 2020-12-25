@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <filesystem>
 #include <fmt/core.h>
 #include <fmt/format.h>
 #include "html.h"
@@ -9,8 +10,6 @@
 #include "templates.h"
 
 namespace fs = std::filesystem;
-
-static const std::string css_path_string = "public/css/style.css";
 
 void RepoHtmlGen::cleanup()
 {
@@ -44,8 +43,7 @@ git_commit *RepoHtmlGen::last_commit()
 }
 
 RepoHtmlGen::RepoHtmlGen(const std::string &repo_path)
-    : m_repo_path(fs::absolute(repo_path)),
-      m_css_path(fs::absolute(css_path_string))
+    : m_repo_path(fs::absolute(repo_path))
 {
     if ((m_err = git_libgit2_init()) < 0)
         error("failed to initialize libgit2");
@@ -85,7 +83,7 @@ void RepoHtmlGen::render_header_content()
         header_template,
         fmt::arg("reponame", m_repo_name),
         fmt::arg("repodesc", ""),
-        fmt::arg("filespath", "/index.html")
+        fmt::arg("filespath", '/' + m_repo_name + "/index.html")
     );
 }
 
@@ -100,7 +98,7 @@ void RepoHtmlGen::generate_file_page(const git_index_entry *entry)
     const std::string file_path = m_repo_path + '/' + entry->path;
     std::ifstream in_stream(file_path, std::ios::in);
 
-    fs::path html_path = "public/files/" + std::string(entry->path) + ".html";
+    fs::path html_path = "public/" + m_repo_name + "/files/" + std::string(entry->path) + ".html";
     if (!fs::exists(html_path.parent_path()))
         fs::create_directories(html_path.parent_path());
 
@@ -114,17 +112,14 @@ void RepoHtmlGen::generate_file_page(const git_index_entry *entry)
         );
     }
 
-    std::string relative_css_path = fs::relative(m_css_path, html_path.parent_path());
-
-    std::ofstream out_stream("public/files/" + std::string(entry->path) + ".html",
+    std::ofstream out_stream("public/" + m_repo_name + "/files/" + std::string(entry->path) + ".html",
             std::ios::out);
     out_stream << fmt::format(
         file_page_template,
         fmt::arg("headercontent", m_header_content),
         fmt::arg("filecontent", html_file_content),
         fmt::arg("reponame", m_repo_name),
-        fmt::arg("filename", entry->path),
-        fmt::arg("csspath", relative_css_path)
+        fmt::arg("filename", entry->path)
     );
 
 }
@@ -140,12 +135,11 @@ void RepoHtmlGen::generate_files()
 
 void RepoHtmlGen::generate_index(std::string root, git_tree *tree)
 {
-    fs::path html_path = "public/" + root + "index.html";
+    fs::path html_path = "public/" + m_repo_name + '/' + root + "index.html";
     if (!fs::exists(html_path.parent_path()))
         fs::create_directories(html_path.parent_path());
 
     std::ofstream out_stream(html_path, std::ios::out);
-    std::string relative_css_path = fs::relative(m_css_path, html_path.parent_path());
     std::string tree_html;
 
     const git_tree_entry *entry = nullptr;
@@ -166,8 +160,6 @@ void RepoHtmlGen::generate_index(std::string root, git_tree *tree)
         case GIT_OBJ_BLOB:
             break;
         case GIT_OBJ_TREE:
-            if (root != "")
-                root += '/';
             generate_index(root + entry_name + '/', (git_tree *)obj);
             tree_html += fmt::format(
                 file_tree_line_dir,
@@ -184,7 +176,7 @@ void RepoHtmlGen::generate_index(std::string root, git_tree *tree)
             file_tree_line,
             fmt::arg("file_tree_name", entry_name),
             fmt::arg("file_tree_size", git_blob_rawsize((git_blob *)obj)),
-            fmt::arg("file_tree_link", "/files/" + root + entry_name + ".html")
+            fmt::arg("file_tree_link", '/' + m_repo_name + "/files/" + root + entry_name + ".html")
         );
 
         git_object_free(obj);
@@ -195,8 +187,7 @@ void RepoHtmlGen::generate_index(std::string root, git_tree *tree)
         fmt::arg("headercontent", m_header_content),
         fmt::arg("reponame", m_repo_name),
         fmt::arg("repodesc", ""), // TODO
-        fmt::arg("filespath", "/index.html"),
-        fmt::arg("treecontent", tree_html),
-        fmt::arg("csspath", relative_css_path)
+        fmt::arg("filespath", '/' + m_repo_name + "/index.html"),
+        fmt::arg("treecontent", tree_html)
     );
 }

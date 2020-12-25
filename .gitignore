@@ -4,4 +4,5 @@ public/*
 *~
 *.swp
 *.swo
+*.o
 tags

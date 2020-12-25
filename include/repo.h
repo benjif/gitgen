@@ -2,7 +2,6 @@
 #define REPO_H
 
 #include <string>
-#include <filesystem>
 #include <git2.h>
 #include <git2/global.h>
 
@@ -32,8 +31,6 @@ private:
     std::string m_repo_name;
 
     std::string m_header_content;
-
-    std::filesystem::path m_css_path;
 
     int m_err { 0 };
     git_repository *m_repo { nullptr };
