@@ -36,6 +36,7 @@ private:
     std::string m_header_content;
 
     int m_err { 0 };
+    git_commit *m_head_commit { nullptr};
     git_repository *m_repo { nullptr };
     git_index *m_index { nullptr };
     git_tree *m_tree { nullptr };

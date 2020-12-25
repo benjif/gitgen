@@ -21,6 +21,8 @@ void RepoHtmlGen::cleanup()
         git_index_free(m_index);
     if (m_tree)
         git_tree_free(m_tree);
+    if (m_head_commit)
+        git_commit_free(m_head_commit);
     git_libgit2_shutdown();
 }
 
@@ -54,8 +56,8 @@ RepoHtmlGen::RepoHtmlGen(const std::string &repo_path)
     if ((m_err = git_repository_index(&m_index, m_repo)) < 0)
         error("failed to retrieve repository index");
 
-    git_commit *head_commit = last_commit();
-    if ((m_err = git_commit_tree(&m_tree, head_commit)) < 0)
+    m_head_commit = last_commit();
+    if ((m_err = git_commit_tree(&m_tree, m_head_commit)) < 0)
         error("failed to retrieve tree for HEAD commit");
 
     if (m_repo_path.back() == '.' && m_repo_path.length() > 2 && *(m_repo_path.end() - 2) == '/')
