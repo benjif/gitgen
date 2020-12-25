@@ -25,11 +25,11 @@ const char *index_page_template =
 
 const char *file_tree_line_template =
     "<tr><td class=\"filename\"><a href=\"{file_tree_link}\">{file_tree_name}</a>"
-    "</td><td class=\"filesize\">{file_tree_size}</td></tr>";
+    "</td><td class=\"filesize\">{file_tree_size}</td><td class=\"sizeunit\">{file_tree_size_unit}</td></tr>";
 
 const char *file_tree_line_dir_template =
     "<tr><td class=\"filename\"><a href=\"{file_tree_link}\">{file_tree_name}</a>"
-    "</td><td class=\"filesize\"></td></tr>";
+    "</td><td class=\"filesize\"></td><td class=\"sizeunit\"></td></tr>";
 
 const char *commits_page_template =
 #include "templates/commits.inc"

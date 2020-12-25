@@ -12,6 +12,7 @@ R"(<!DOCTYPE html>
 <tr class="toptr">
 <th style="text-align: left;">Filename</th>
 <th style="text-align: left;">Size</th>
+<th style="text-align: left;"><!-- Unit --></th>
 <tr>
 </thead>
 <tbody>

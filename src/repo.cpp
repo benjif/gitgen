@@ -1,5 +1,6 @@
 #include <vector>
 #include <fstream>
+#include <utility>
 #include <sstream>
 #include <iostream>
 #include <algorithm>
@@ -197,6 +198,31 @@ git_commit *RepoHtmlGen::file_last_modified(git_object *obj)
 }
 */
 
+#define GiB 0x40000000
+#define MiB 0x100000
+#define KiB 0x400
+
+template <typename T>
+std::string to_string_precision(const T value, size_t precision)
+{
+    std::ostringstream ret;
+    ret.precision(precision);
+    ret << std::fixed << value;
+    return ret.str();
+}
+
+std::pair<std::string, std::string> format_filesize(size_t rawsize)
+{
+    if (rawsize >= GiB)
+        return std::make_pair(to_string_precision((double)rawsize / GiB, 2), "GiB");
+    else if (rawsize >= MiB)
+        return std::make_pair(to_string_precision((double)rawsize / MiB, 2), "MiB");
+    else if (rawsize >= KiB)
+        return std::make_pair(to_string_precision((double)rawsize / KiB, 2), "KiB");
+
+    return std::make_pair(std::to_string(rawsize), "B");
+}
+
 void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
 {
     fs::path html_path =
@@ -238,10 +264,13 @@ void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
             break;
         }
 
+        auto size_info = format_filesize(git_blob_rawsize((git_blob *)obj));
+
         tree_html += fmt::format(
             file_tree_line_template,
             fmt::arg("file_tree_name", entry_name),
-            fmt::arg("file_tree_size", git_blob_rawsize((git_blob *)obj)),
+            fmt::arg("file_tree_size", size_info.first),
+            fmt::arg("file_tree_size_unit", size_info.second),
             fmt::arg("file_tree_link", '/' + m_repo_name + "/files/" + root + entry_name + ".html")
         );
 
@@ -272,4 +301,5 @@ void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
 
 void RepoHtmlGen::generate_commits()
 {
+    //std::ofstream out_stream("public/" + m_repo_name + "/commits.html", std::ios::out);
 }
