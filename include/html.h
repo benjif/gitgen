@@ -3,6 +3,6 @@
 
 #include <string>
 
-void escape_string(std::string &);
+std::string escape_string(const std::string &);
 
 #endif

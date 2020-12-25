@@ -3,6 +3,6 @@ R"(<div id="header">
 <div id="repodesc">{repodesc}</div>
 <ul id="reponav">
 <li><a href="{filespath}">Files</a></li>
-<li><a href="">Commits</a></li>
+<li><a href="{commitspath}">Commits</a></li>
 </ul>
 </div>)"

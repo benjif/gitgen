@@ -22,12 +22,25 @@ private:
     git_commit *last_commit();
     //git_commit *file_last_modified(git_object *obj);
 
-    void render_header_content();
-
     void generate_file_page_code(const std::string &file_path, std::string &html);
     void generate_file_page(const git_index_entry *entry);
     void generate_files();
     void generate_index(git_tree *tree, std::string root = "");
+
+    struct CommitInfo {
+        ~CommitInfo();
+
+        git_commit *commit;
+        git_time_t time;
+        const char *summary;
+        const char *message;
+        const git_signature *author;
+        const git_signature *committer;
+        char id_str[GIT_OID_HEXSZ + 1];
+        size_t files, gain, loss;
+    };
+
+    void generate_commit_page(const CommitInfo &commit);
     void generate_commits();
 
     std::string m_repo_path;

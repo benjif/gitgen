@@ -10,6 +10,7 @@ extern const char *file_tree_line_template;
 extern const char *file_tree_line_dir_template;
 extern const char *index_page_template;
 extern const char *commits_page_template;
+extern const char *commit_page_template;
 extern const char *commits_line_template;
 
 #endif

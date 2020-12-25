@@ -1,6 +1,6 @@
 #include "html.h"
 
-void escape_string(std::string &str)
+std::string escape_string(const std::string &str)
 {
     std::string out;
     out.reserve(str.length());
@@ -16,5 +16,5 @@ void escape_string(std::string &str)
         }
     }
 
-    str.swap(out);
+    return out;
 }

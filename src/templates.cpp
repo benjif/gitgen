@@ -35,5 +35,10 @@ const char *commits_page_template =
 #include "templates/commits.inc"
 ;
 
+const char *commit_page_template =
+#include "templates/commit.inc"
+;
+
 const char *commits_line_template =
-    "<tr><td>{date}</td><td>{message}</td><td>{author}</td><td>{files}</td><td>{gain}</td><td>{loss}</td></tr>";
+    "<tr><td>{date}</td><td><a href=\"{commit_link}\">{message}</a></td><td>{author}</td><td>{files}</td>"
+    "<td>{gain}</td><td>{loss}</td></tr>";
