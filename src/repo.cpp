@@ -15,7 +15,43 @@
 #include "repo.h"
 #include "templates.h"
 
+#define GiB 0x40000000
+#define MiB 0x100000
+#define KiB 0x400
+
 namespace fs = std::filesystem;
+
+template <typename T>
+static std::string to_string_precision(const T value, size_t precision)
+{
+    std::ostringstream ret;
+    ret.precision(precision);
+    ret << std::fixed << value;
+    return ret.str();
+}
+
+static char lowercase(char c)
+{
+    if (c >= 'A' && c <= 'Z')
+        return c - ('Z' - 'z');
+    return c;
+}
+
+static bool is_readme(std::string &filename)
+{
+    std::transform(filename.begin(), filename.end(),
+            filename.begin(), lowercase);
+    if (filename == "readme.md" || filename == "readme.txt")
+        return true;
+    return false;
+}
+
+static std::string to_string(git_time_t time)
+{
+    std::stringstream sstream;
+    sstream << std::put_time(std::localtime(&time), "%Y-%m-%d %H:%M");
+    return sstream.str();
+}
 
 void RepoHtmlGen::cleanup()
 {
@@ -94,6 +130,8 @@ RepoHtmlGen::~RepoHtmlGen()
 
 void RepoHtmlGen::generate()
 {
+    // it might be more efficient to merge generate_files() and generate_index()
+    // we would still need a fast index scan to locate README files
     generate_files();
     generate_index(m_tree);
     generate_commits();
@@ -102,8 +140,21 @@ void RepoHtmlGen::generate()
 void RepoHtmlGen::generate_file_page_code(const std::string &file_path, std::string &html)
 {
     std::ifstream in_stream(file_path, std::ios::in);
+    if (in_stream.fail()) {
+        html = "File does not exist.";
+        return;
+    }
 
-    // TODO: optimize this
+    in_stream.seekg(0, std::ios::end);
+    size_t filesize = in_stream.tellg();
+    if (filesize > MAX_VIEW_FILESIZE) {
+        html = "File is too large to view.";
+        return;
+    }
+
+    html.reserve(in_stream.tellg()); // we'll really need more than this TODO: optimize further?
+    in_stream.seekg(0, std::ios::beg);
+
     std::string line;
     while (std::getline(in_stream, line)) {
         html += fmt::format(
@@ -115,14 +166,23 @@ void RepoHtmlGen::generate_file_page_code(const std::string &file_path, std::str
 
 void RepoHtmlGen::generate_file_page(const git_index_entry *entry)
 {
-    const std::string file_path = m_repo_path + '/' + entry->path;
+    fs::path file_path = m_repo_path + '/' + entry->path;
 
     fs::path html_path = "public/" + m_repo_name + "/files/" + std::string(entry->path) + ".html";
     if (!fs::exists(html_path.parent_path()))
         fs::create_directories(html_path.parent_path());
 
+    git_object *obj;
+    if ((m_err = git_object_lookup(&obj, m_repo, &entry->id, GIT_OBJ_ANY)) < 0)
+        error("failed to lookup git object from index entry");
+
     std::string html_file_content;
-    generate_file_page_code(file_path, html_file_content);
+    if (git_blob_is_binary((git_blob *)obj))
+        html_file_content = "This is a binary file.";
+    else
+        generate_file_page_code(file_path, html_file_content);
+
+    git_object_free(obj);
 
     std::ofstream out_stream("public/" + m_repo_name + "/files/" + std::string(entry->path) + ".html",
             std::ios::out);
@@ -139,23 +199,6 @@ void RepoHtmlGen::generate_file_page(const git_index_entry *entry)
             )
         )
     );
-
-}
-
-static char lowercase(char c)
-{
-    if (c >= 'A' && c <= 'Z')
-        return c - ('Z' - 'z');
-    return c;
-}
-
-static bool is_readme(std::string &filename)
-{
-    std::transform(filename.begin(), filename.end(),
-            filename.begin(), lowercase);
-    if (filename == "readme.md" || filename == "readme.txt")
-        return true;
-    return false;
 }
 
 void RepoHtmlGen::generate_files()
@@ -199,19 +242,6 @@ git_commit *RepoHtmlGen::file_last_modified(git_object *obj)
 }
 */
 
-template <typename T>
-std::string to_string_precision(const T value, size_t precision)
-{
-    std::ostringstream ret;
-    ret.precision(precision);
-    ret << std::fixed << value;
-    return ret.str();
-}
-
-#define GiB 0x40000000
-#define MiB 0x100000
-#define KiB 0x400
-
 std::pair<std::string, std::string> format_filesize(size_t rawsize)
 {
     if (rawsize >= GiB)
@@ -235,12 +265,14 @@ void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
     std::ofstream out_stream(html_path, std::ios::out);
     std::string tree_html;
 
+    git_object *obj;
     const git_tree_entry *entry = nullptr;
     const char *entry_name;
 
-    git_object *obj = nullptr;
-
     size_t tree_entry_count = git_tree_entrycount(tree);
+
+    // we really need more than this TODO: optimize further?
+    tree_html.reserve(tree_entry_count * sizeof(file_tree_line_template));
     for (size_t i = 0; i < tree_entry_count; i++) {
         if (!(entry = git_tree_entry_byindex(tree, i)))
             error("failed to retrieve tree entry");
@@ -298,21 +330,6 @@ void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
     );
 }
 
-//const char *commits_line_template =
-    //"<tr><td>{date}</td><td>{message}</td><td>{author}</td><td>{files}</td><td>{gain}</td><td>{loss}</td></tr>";
-
-RepoHtmlGen::CommitInfo::~CommitInfo()
-{
-    git_commit_free(commit);
-}
-
-std::string to_string(git_time_t time)
-{
-    std::stringstream sstream;
-    sstream << std::put_time(std::localtime(&time), "%Y-%m-%d %H:%M");
-    return sstream.str();
-}
-
 void RepoHtmlGen::generate_commit_page(const CommitInfo &info)
 {
     std::ofstream out_stream("public/" + m_repo_name + "/commits/" + info.id_str + ".html", std::ios::out);
@@ -324,8 +341,95 @@ void RepoHtmlGen::generate_commit_page(const CommitInfo &info)
         fmt::arg("date", to_string(info.time)),
         fmt::arg("message", info.summary),
         fmt::arg("author", info.author->name),
-        fmt::arg("email", info.author->email)
+        fmt::arg("email", info.author->email),
+        fmt::arg("commit", info.id_str),
+        fmt::arg("parent", info.parent_id_str)
     );
+}
+
+void RepoHtmlGen::get_commit_info(git_commit *commit, CommitInfo &info)
+{
+    info.commit = commit;
+    info.time = git_commit_time(commit);
+    info.summary = git_commit_summary(commit);
+    info.message = git_commit_message(commit);
+    info.author = git_commit_author(commit);
+    info.committer = git_commit_committer(commit);
+    info.id = git_commit_id(commit);
+    git_oid_tostr(info.id_str, sizeof(info.id_str), info.id);
+
+    if ((m_err = git_tree_lookup(&info.tree, m_repo, git_commit_tree_id(commit))) < 0)
+        error("failed to lookup commit tree");
+    if ((m_err = git_commit_parent(&info.parent, commit, 0)) == 0) {
+        info.parent_id = git_commit_id(info.parent);
+        git_oid_tostr(info.parent_id_str, sizeof(info.parent_id_str), info.parent_id);
+        if ((m_err = git_tree_lookup(&info.parent_tree, m_repo, git_commit_tree_id(info.parent))) < 0) {
+            info.parent = nullptr;
+            info.parent_tree = nullptr;
+        }
+    } else {
+        info.parent = nullptr;
+        info.parent_tree = nullptr;
+        info.parent_id = nullptr;
+    }
+
+    git_diff_options diff_options;
+    git_diff_init_options(&diff_options, GIT_DIFF_OPTIONS_VERSION);
+    diff_options.flags |= GIT_DIFF_IGNORE_SUBMODULES | GIT_DIFF_INCLUDE_TYPECHANGE | GIT_DIFF_DISABLE_PATHSPEC_MATCH;
+
+    git_diff_find_options diff_find_options;
+    diff_find_options.flags |= GIT_DIFF_FIND_RENAMES | GIT_DIFF_FIND_COPIES | GIT_DIFF_FIND_EXACT_MATCH_ONLY;
+
+    if ((m_err = git_diff_find_init_options(&diff_find_options, GIT_DIFF_FIND_OPTIONS_VERSION)) < 0)
+        error("failed to find init options");
+    if ((m_err = git_diff_tree_to_tree(&info.diff, m_repo, info.parent_tree, info.tree, &diff_options)) < 0)
+        error("failed to collect difference from parent tree");
+    if ((m_err = git_diff_find_similar(info.diff, &diff_find_options)) < 0)
+        error("failed to transform diff");
+
+    git_patch *current_patch;
+    const git_diff_hunk *current_hunk;
+    const git_diff_line *current_line;
+    size_t delta_count = git_diff_num_deltas(info.diff);
+    size_t current_hunk_lines;
+
+    info.files = delta_count;
+
+    for (size_t i = 0; i < delta_count; i++) {
+        if (git_patch_from_diff(&current_patch, info.diff, i) < 0)
+            error("failed to get patch from diff");
+        auto &delta_obj = info.deltas.emplace_back(current_patch);
+        const git_diff_delta *delta = git_patch_get_delta(current_patch);
+
+        if (delta->flags & GIT_DIFF_FLAG_BINARY)
+            continue;
+
+        size_t hunks_count = git_patch_num_hunks(current_patch);
+        for (size_t j = 0; j < hunks_count; j++) {
+            if (git_patch_get_hunk(&current_hunk, &current_hunk_lines, current_patch, j) < 0)
+                error("failed to get hunk from patch");
+            for (size_t k = 0; !git_patch_get_line_in_hunk(&current_line, current_patch, j, k); k++) {
+                if (current_line->old_lineno == -1) {
+                    delta_obj.gain++;
+                    info.gain++;
+                } else if (current_line->new_lineno == -1) {
+                    delta_obj.loss++;
+                    info.loss++;
+                }
+            }
+        }
+    }
+}
+
+RepoHtmlGen::CommitInfo::~CommitInfo()
+{
+    git_commit_free(commit);
+    git_commit_free(parent);
+    git_tree_free(tree);
+    git_tree_free(parent_tree);
+    git_diff_free(diff);
+    for (auto &d : deltas)
+        git_patch_free(d.patch);
 }
 
 void RepoHtmlGen::generate_commits()
@@ -344,38 +448,28 @@ void RepoHtmlGen::generate_commits()
     git_revwalk_sorting(walk, GIT_SORT_TOPOLOGICAL | GIT_SORT_TIME);
     //git_revwalk_simplify_first_parent(walk);
 
+    // TODO: paginate?
     std::string commits_html;
-    while (git_revwalk_next(&oid, walk) == 0) {
+    commits_html.reserve(512); // this feels dirty
+
+    size_t commit_count = 0;
+    while (git_revwalk_next(&oid, walk) == 0 && commit_count++ < MAX_COMMIT_COUNT) {
         git_commit *commit = nullptr;
         if ((m_err = git_commit_lookup(&commit, m_repo, &oid)) < 0)
             error("failed to lookup commit");
 
-        CommitInfo commit_info = {
-            commit,
-            git_commit_time(commit),
-            git_commit_summary(commit),
-            git_commit_message(commit),
-            git_commit_author(commit),
-            git_commit_committer(commit),
-            "",
-            0,
-            0,
-            0,
-        };
-
-        git_oid_fmt(commit_info.id_str, git_commit_id(commit));
+        CommitInfo commit_info;
+        get_commit_info(commit, commit_info);
         generate_commit_page(commit_info);
-
-        std::cout << commit_info.summary << '\n';
 
         commits_html += fmt::format(
             commits_line_template,
             fmt::arg("date", to_string(commit_info.time)),
             fmt::arg("message", escape_string(commit_info.summary)),
             fmt::arg("author", escape_string(commit_info.author->name)),
-            fmt::arg("files", ""),
-            fmt::arg("gain", ""),
-            fmt::arg("loss", ""),
+            fmt::arg("files", commit_info.files),
+            fmt::arg("gain", commit_info.gain),
+            fmt::arg("loss", commit_info.loss),
             fmt::arg("commit_link", '/' + m_repo_name + "/commits/" + commit_info.id_str + ".html")
         );
     }

@@ -1,5 +1,9 @@
 @charset "UTF-8";
 
+html {
+    overflow-y: scroll;
+}
+
 a {
     color: blue;
     text-decoration: none;
@@ -15,7 +19,7 @@ a:hover {
 
 #content {
     font-family: monospace;
-    max-width: 102ch;
+    max-width: 112ch;
     display: block;
     margin-left: auto;
     margin-right: auto;

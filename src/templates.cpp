@@ -42,3 +42,10 @@ const char *commit_page_template =
 const char *commits_line_template =
     "<tr><td>{date}</td><td><a href=\"{commit_link}\">{message}</a></td><td>{author}</td><td>{files}</td>"
     "<td>{gain}</td><td>{loss}</td></tr>";
+
+const char *diff_add_template;
+const char *diff_del_template;
+const char *diff_add_eofnl_template;
+const char *diff_del_eofnl_template;
+const char *diff_file_hdr_template;
+const char *diff_hunk_hdr_template;

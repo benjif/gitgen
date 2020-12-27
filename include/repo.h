@@ -7,6 +7,9 @@
 
 class RepoHtmlGen {
 public:
+    static const size_t MAX_COMMIT_COUNT = 100;
+    static const size_t MAX_VIEW_FILESIZE = 0x400 * 256; // 256 KiB
+
     RepoHtmlGen(const std::string &repo_path);
     ~RepoHtmlGen();
 
@@ -27,25 +30,40 @@ private:
     void generate_files();
     void generate_index(git_tree *tree, std::string root = "");
 
+    struct Delta {
+        git_patch *patch;
+        size_t gain, loss;
+    };
+
     struct CommitInfo {
         ~CommitInfo();
 
         git_commit *commit;
+        git_commit *parent;
+        git_diff *diff;
+        git_tree *tree;
+        git_tree *parent_tree;
         git_time_t time;
         const char *summary;
         const char *message;
+        const git_oid *id;
+        const git_oid *parent_id;
         const git_signature *author;
         const git_signature *committer;
         char id_str[GIT_OID_HEXSZ + 1];
-        size_t files, gain, loss;
+        char parent_id_str[GIT_OID_HEXSZ + 1];
+        size_t files = 0, gain = 0, loss = 0;
+
+        std::vector<Delta> deltas;
     };
+
+    void get_commit_info(git_commit *commit, CommitInfo &info);
 
     void generate_commit_page(const CommitInfo &commit);
     void generate_commits();
 
     std::string m_repo_path;
     std::string m_repo_name;
-
     std::string m_header_content;
 
     int m_err { 0 };
