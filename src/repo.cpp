@@ -37,16 +37,21 @@ static char lowercase(char c)
     return c;
 }
 
-static bool is_readme(std::string &filename)
+static inline void to_lowercase(std::string &str)
 {
-    std::transform(filename.begin(), filename.end(),
-            filename.begin(), lowercase);
+    std::transform(str.begin(), str.end(),
+            str.begin(), lowercase);
+}
+
+static inline bool is_readme(std::string &filename)
+{
+    to_lowercase(filename);
     if (filename == "readme.md" || filename == "readme.txt")
         return true;
     return false;
 }
 
-static std::string to_string(git_time_t time)
+static inline std::string to_string(git_time_t time)
 {
     std::stringstream sstream;
     sstream << std::put_time(std::localtime(&time), "%Y-%m-%d %H:%M");
@@ -75,7 +80,7 @@ void RepoHtmlGen::error(const char *msg)
 
 git_commit *RepoHtmlGen::last_commit()
 {
-    git_commit *commit = nullptr;
+    git_commit *commit;
     git_oid oid_commit;
 
     if ((m_err = git_reference_name_to_id(&oid_commit, m_repo, "HEAD")) < 0)
@@ -111,6 +116,8 @@ RepoHtmlGen::RepoHtmlGen(const std::string &repo_path)
     else
         m_repo_name = m_repo_path.substr(path_split_pos + 1);
 
+    to_lowercase(m_repo_name);
+
     m_header_content = fmt::format(
         header_template,
         fmt::arg("reponame", m_repo_name),
@@ -131,17 +138,22 @@ RepoHtmlGen::~RepoHtmlGen()
 void RepoHtmlGen::generate()
 {
     // it might be more efficient to merge generate_files() and generate_index()
-    // we would still need a fast index scan to locate README files
+    // we would still need a fast (index) pre-scan to locate README files
+    //
+    // merging the two and walking the tree instead of the index would also allow
+    // for sorting the file tree pages (directories first, alphabetical, etc.)
     generate_files();
     generate_index(m_tree);
     generate_commits();
 }
 
+static size_t LINE_SIZE_EST = 50;
+
 void RepoHtmlGen::generate_file_page_code(const std::string &file_path, std::string &html)
 {
     std::ifstream in_stream(file_path, std::ios::in);
-    if (in_stream.fail()) {
-        html = "File does not exist.";
+    if (!in_stream.is_open()) {
+        html = "File could not be opened.";
         return;
     }
 
@@ -152,7 +164,7 @@ void RepoHtmlGen::generate_file_page_code(const std::string &file_path, std::str
         return;
     }
 
-    html.reserve(in_stream.tellg()); // we'll really need more than this TODO: optimize further?
+    html.reserve(filesize + (filesize / LINE_SIZE_EST) * sizeof(file_line_template));
     in_stream.seekg(0, std::ios::beg);
 
     std::string line;
@@ -186,6 +198,9 @@ void RepoHtmlGen::generate_file_page(const git_index_entry *entry)
 
     std::ofstream out_stream("public/" + m_repo_name + "/files/" + std::string(entry->path) + ".html",
             std::ios::out);
+    if (!out_stream.is_open())
+        error("failed to open output file.");
+
     out_stream << fmt::format(
         file_page_template,
         fmt::arg("headercontent", m_header_content),
@@ -219,7 +234,7 @@ git_commit *RepoHtmlGen::file_last_modified(git_object *obj)
 {
     git_revwalk *walk = nullptr;
     if ((m_err = git_revwalk_new(&walk, m_repo)) < 0)
-        error("Failed to create git revwalk");
+        error("failed to create git revwalk");
 
     const git_oid *obj_oid = git_object_id(obj);
     git_oid oid;
@@ -263,17 +278,19 @@ void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
         fs::create_directories(html_path.parent_path());
 
     std::ofstream out_stream(html_path, std::ios::out);
-    std::string tree_html;
-
-    git_object *obj;
-    const git_tree_entry *entry = nullptr;
-    const char *entry_name;
+    if (!out_stream.is_open())
+        error("failed to open output file.");
 
     size_t tree_entry_count = git_tree_entrycount(tree);
 
     // we really need more than this TODO: optimize further?
+    std::string tree_html;
     tree_html.reserve(tree_entry_count * sizeof(file_tree_line_template));
     for (size_t i = 0; i < tree_entry_count; i++) {
+        const char *entry_name;
+        const git_tree_entry *entry = nullptr;
+        git_object *obj;
+
         if (!(entry = git_tree_entry_byindex(tree, i)))
             error("failed to retrieve tree entry");
         if (!(entry_name = git_tree_entry_name(entry)))
@@ -333,6 +350,8 @@ void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
 void RepoHtmlGen::generate_commit_page(const CommitInfo &info)
 {
     std::ofstream out_stream("public/" + m_repo_name + "/commits/" + info.id_str + ".html", std::ios::out);
+    if (!out_stream.is_open())
+        error("failed to open output file.");
 
     out_stream << fmt::format(
         commit_page_template,
@@ -387,15 +406,13 @@ void RepoHtmlGen::get_commit_info(git_commit *commit, CommitInfo &info)
     if ((m_err = git_diff_find_similar(info.diff, &diff_find_options)) < 0)
         error("failed to transform diff");
 
-    git_patch *current_patch;
-    const git_diff_hunk *current_hunk;
-    const git_diff_line *current_line;
     size_t delta_count = git_diff_num_deltas(info.diff);
-    size_t current_hunk_lines;
 
     info.files = delta_count;
+    info.deltas.reserve(delta_count);
 
     for (size_t i = 0; i < delta_count; i++) {
+        git_patch *current_patch;
         if (git_patch_from_diff(&current_patch, info.diff, i) < 0)
             error("failed to get patch from diff");
         auto &delta_obj = info.deltas.emplace_back(current_patch);
@@ -404,11 +421,15 @@ void RepoHtmlGen::get_commit_info(git_commit *commit, CommitInfo &info)
         if (delta->flags & GIT_DIFF_FLAG_BINARY)
             continue;
 
-        size_t hunks_count = git_patch_num_hunks(current_patch);
+        size_t hunks_count = git_patch_num_hunks(delta_obj.patch);
         for (size_t j = 0; j < hunks_count; j++) {
-            if (git_patch_get_hunk(&current_hunk, &current_hunk_lines, current_patch, j) < 0)
+            const git_diff_hunk *current_hunk;
+            const git_diff_line *current_line;
+            size_t current_hunk_lines;
+
+            if (git_patch_get_hunk(&current_hunk, &current_hunk_lines, delta_obj.patch, j) < 0)
                 error("failed to get hunk from patch");
-            for (size_t k = 0; !git_patch_get_line_in_hunk(&current_line, current_patch, j, k); k++) {
+            for (size_t k = 0; !git_patch_get_line_in_hunk(&current_line, delta_obj.patch, j, k); k++) {
                 if (current_line->old_lineno == -1) {
                     delta_obj.gain++;
                     info.gain++;
@@ -438,23 +459,31 @@ void RepoHtmlGen::generate_commits()
     if (!fs::exists(commits_dir))
         fs::create_directories(commits_dir);
 
-    git_revwalk *walk = nullptr;
+    git_revwalk *walk;
     git_oid oid;
 
     if ((m_err = git_revwalk_new(&walk, m_repo)) < 0)
-        error("Failed to create git revwalk");
+        error("failed to create git revwalk");
+    if ((m_err = git_revwalk_push_head(walk)) < 0)
+        error("failed to push repository head to revision walker");
 
-    git_revwalk_push_head(walk);
+    git_commit *nth_commit;
+    git_commit_nth_gen_ancestor(&nth_commit, m_head_commit, MAX_COMMIT_COUNT);
+
+    // this should be slightly faster than manually counting and breaking past MAX_COMMIT_COUNT
+    // (see https://github.com/libgit2/libgit2/issues/4428#issuecomment-465959268)
+    git_revwalk_hide(walk, git_commit_id(nth_commit));
+    git_commit_free(nth_commit);
+
     git_revwalk_sorting(walk, GIT_SORT_TOPOLOGICAL | GIT_SORT_TIME);
-    //git_revwalk_simplify_first_parent(walk);
+    git_revwalk_simplify_first_parent(walk);
 
     // TODO: paginate?
     std::string commits_html;
     commits_html.reserve(512); // this feels dirty
 
-    size_t commit_count = 0;
-    while (git_revwalk_next(&oid, walk) == 0 && commit_count++ < MAX_COMMIT_COUNT) {
-        git_commit *commit = nullptr;
+    while (git_revwalk_next(&oid, walk) == 0) {
+        git_commit *commit;
         if ((m_err = git_commit_lookup(&commit, m_repo, &oid)) < 0)
             error("failed to lookup commit");
 
@@ -477,6 +506,9 @@ void RepoHtmlGen::generate_commits()
     git_revwalk_free(walk);
 
     std::ofstream out_stream("public/" + m_repo_name + "/commits.html", std::ios::out);
+    if (!out_stream.is_open())
+        error("failed to open output file.");
+
     out_stream << fmt::format(
         commits_page_template,
         fmt::arg("reponame", m_repo_name),
