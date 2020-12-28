@@ -481,6 +481,8 @@ void RepoHtmlGen::get_commit_info(git_commit *commit, CommitInfo &info)
                 }
             }
         }
+
+        info.hunks += hunks_count;
     }
 }
 
@@ -490,8 +492,11 @@ void RepoHtmlGen::generate_commit_page(const CommitInfo &info)
     if (!out_stream.is_open())
         error("failed to open output file.");
 
+    size_t diff_size_est =
+        std::min(info.gain + info.loss + info.files * 4 + info.hunks, MAX_DIFF_LINE_COUNT) * LINE_SIZE_EST;
+
     diff_printer_passthrough passthrough(MAX_DIFF_LINE_COUNT);
-    passthrough.html.reserve(256);
+    passthrough.html.reserve(diff_size_est);
     git_diff_print(info.diff, GIT_DIFF_FORMAT_PATCH, &diff_printer, &passthrough);
 
     out_stream << fmt::format(

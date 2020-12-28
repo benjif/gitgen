@@ -56,6 +56,6 @@ const char *diff_del_eofnl_template =
 const char *diff_file_hdr_template =
     "<pre class=\"diff_file_hdr\">{}</pre>";
 const char *diff_hunk_hdr_template =
-    "<a id=\"#hunk{}\" href=\"#hunk{}\"><pre class=\"diff_hunk_hdr\">{}</pre></a>";
+    "<a id=\"hunk{}\" href=\"#hunk{}\"><pre class=\"diff_hunk_hdr\">{}</pre></a>";
 const char *diff_max_line_count =
     "<div class=\"diff_max\">Max diff line count reached.</div>";

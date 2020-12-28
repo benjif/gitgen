@@ -10,7 +10,9 @@ public:
     // TODO: add cli options to change these values
     static const size_t MAX_COMMIT_COUNT = 100;
     static const size_t MAX_VIEW_FILESIZE = 0x400 * 256; // 256 KiB
-    static const size_t MAX_DIFF_LINE_COUNT = 512;
+
+    // TODO: make a max diff line count but per file
+    static const size_t MAX_DIFF_LINE_COUNT = 1024;
 
     RepoHtmlGen(const std::string &repo_path);
     ~RepoHtmlGen();
@@ -54,7 +56,7 @@ private:
         const git_signature *committer;
         char id_str[GIT_OID_HEXSZ + 1];
         char parent_id_str[GIT_OID_HEXSZ + 1];
-        size_t files = 0, gain = 0, loss = 0;
+        size_t files = 0, hunks = 0, gain = 0, loss = 0;
 
         std::vector<Delta> deltas;
     };
