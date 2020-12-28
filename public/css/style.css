@@ -19,7 +19,7 @@ a:hover {
 
 #content {
     font-family: monospace;
-    max-width: 112ch;
+    max-width: 106ch;
     display: block;
     margin-left: auto;
     margin-right: auto;
@@ -76,6 +76,11 @@ ul#reponav {
     display: block;
 }
 
+table td, table th {
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
 table#commits {
     width: 100%;
 }
@@ -85,7 +90,7 @@ table#commits tr:nth-child(odd) {
 }
 
 table#commits tr:nth-child(even) {
-    background-color: #ddd;
+    background-color: #eee;
 }
 
 table#repotree {
@@ -97,7 +102,7 @@ table#repotree tr:nth-child(odd) {
 }
 
 table#repotree tr:nth-child(even) {
-    background-color: #ddd;
+    background-color: #eee;
 }
 
 table#repotree .filename {
@@ -119,4 +124,64 @@ tr.toptr td {
 
 #readmeview {
     margin-top: 20px;
+}
+
+#diff {
+    /*margin-top: 20px;*/
+}
+
+.diff_add {
+    color: green;
+}
+
+.diff_del {
+    color: red;
+}
+
+.diff_file_hdr {
+    /*font-weight: bold;*/
+}
+
+.diff_hunk_hdr {
+    font-weight: bold;
+}
+
+.diff_add::before {
+    content: '+ ';
+}
+
+.diff_del::before {
+    content: '- ';
+}
+
+.diff_line::before {
+    content: '  ';
+}
+
+.diff_hunk_hdr::before {
+}
+
+.diff_max {
+    font-weight: bold;
+    color: red;
+    margin-top: 20px;
+}
+
+pre.diff_add,
+pre.diff_del,
+pre.diff_line {
+    padding-bottom: 2px;
+    padding-top: 2px;
+    margin: 0;
+}
+
+pre.diff_file_hdr,
+pre.diff_hunk_hdr {
+    padding-bottom: 4px;
+    padding-top: 4px;
+    margin: 0;
+}
+
+pre.diff_file_hdr {
+    color: gray;
 }

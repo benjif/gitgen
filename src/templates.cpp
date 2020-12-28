@@ -43,9 +43,19 @@ const char *commits_line_template =
     "<tr><td>{date}</td><td><a href=\"{commit_link}\">{message}</a></td><td>{author}</td><td>{files}</td>"
     "<td>{gain}</td><td>{loss}</td></tr>";
 
-const char *diff_add_template;
-const char *diff_del_template;
-const char *diff_add_eofnl_template;
-const char *diff_del_eofnl_template;
-const char *diff_file_hdr_template;
-const char *diff_hunk_hdr_template;
+const char *diff_line_template =
+    "<pre class=\"diff_line\">{}</pre>";
+const char *diff_add_template =
+    "<pre class=\"diff_add\">{}</pre>";
+const char *diff_del_template =
+    "<pre class=\"diff_del\">{}</pre>";
+const char *diff_add_eofnl_template =
+    "<pre class=\"diff_add\">{}</pre>";
+const char *diff_del_eofnl_template =
+    "<pre class=\"diff_del\">{}</pre>";
+const char *diff_file_hdr_template =
+    "<pre class=\"diff_file_hdr\">{}</pre>";
+const char *diff_hunk_hdr_template =
+    "<a id=\"#hunk{}\" href=\"#hunk{}\"><pre class=\"diff_hunk_hdr\">{}</pre></a>";
+const char *diff_max_line_count =
+    "<div class=\"diff_max\">Max diff line count reached.</div>";

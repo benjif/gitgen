@@ -7,8 +7,10 @@
 
 class RepoHtmlGen {
 public:
+    // TODO: add cli options to change these values
     static const size_t MAX_COMMIT_COUNT = 100;
     static const size_t MAX_VIEW_FILESIZE = 0x400 * 256; // 256 KiB
+    static const size_t MAX_DIFF_LINE_COUNT = 512;
 
     RepoHtmlGen(const std::string &repo_path);
     ~RepoHtmlGen();
@@ -58,7 +60,6 @@ private:
     };
 
     void get_commit_info(git_commit *commit, CommitInfo &info);
-
     void generate_commit_page(const CommitInfo &commit);
     void generate_commits();
 

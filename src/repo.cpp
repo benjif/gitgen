@@ -11,6 +11,8 @@
 #include <unordered_set>
 #include <fmt/core.h>
 #include <fmt/format.h>
+// TODO: remove
+#include <fmt/color.h>
 #include "html.h"
 #include "repo.h"
 #include "templates.h"
@@ -257,7 +259,7 @@ git_commit *RepoHtmlGen::file_last_modified(git_object *obj)
 }
 */
 
-std::pair<std::string, std::string> format_filesize(size_t rawsize)
+static std::pair<std::string, std::string> inline format_filesize(size_t rawsize)
 {
     if (rawsize >= GiB)
         return std::make_pair(to_string_precision((double)rawsize / GiB, 2), "GiB");
@@ -347,23 +349,65 @@ void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
     );
 }
 
-void RepoHtmlGen::generate_commit_page(const CommitInfo &info)
-{
-    std::ofstream out_stream("public/" + m_repo_name + "/commits/" + info.id_str + ".html", std::ios::out);
-    if (!out_stream.is_open())
-        error("failed to open output file.");
+struct diff_printer_passthrough {
+    diff_printer_passthrough(size_t max)
+        : max_line_no(max)
+    {
+    }
 
-    out_stream << fmt::format(
-        commit_page_template,
-        fmt::arg("reponame", m_repo_name),
-        fmt::arg("headercontent", m_header_content),
-        fmt::arg("date", to_string(info.time)),
-        fmt::arg("message", info.summary),
-        fmt::arg("author", info.author->name),
-        fmt::arg("email", info.author->email),
-        fmt::arg("commit", info.id_str),
-        fmt::arg("parent", info.parent_id_str)
+    std::string html;
+    const size_t max_line_no;
+    size_t line_hunk_hdr_no { 0 };
+    size_t line_no { 0 };
+};
+
+static int diff_printer(const git_diff_delta *, const git_diff_hunk *,
+        const git_diff_line *line, void *void_pass)
+{
+    diff_printer_passthrough *passthrough = (diff_printer_passthrough *)void_pass;
+    if (++passthrough->line_no >= passthrough->max_line_no) {
+        passthrough->html += diff_max_line_count;
+        return 1;
+    }
+
+    const char *diff_template;
+    switch (line->origin) {
+    case GIT_DIFF_LINE_ADDITION:
+        diff_template = diff_add_template;
+        break;
+    case GIT_DIFF_LINE_DELETION:
+        diff_template = diff_del_template;
+        break;
+    case GIT_DIFF_LINE_ADD_EOFNL:
+        diff_template = diff_add_eofnl_template;
+        break;
+    case GIT_DIFF_LINE_DEL_EOFNL:
+        diff_template = diff_del_eofnl_template;
+        break;
+    case GIT_DIFF_LINE_FILE_HDR:
+        diff_template = diff_file_hdr_template;
+        break;
+    case GIT_DIFF_LINE_HUNK_HDR:
+        passthrough->html += fmt::format(
+            diff_hunk_hdr_template,
+            passthrough->line_hunk_hdr_no,
+            passthrough->line_hunk_hdr_no,
+            line->content,
+            line->content_len
+        );
+        passthrough->line_hunk_hdr_no++;
+        return 0;
+    default:
+        diff_template = diff_line_template;
+        break;
+    }
+
+    passthrough->html += fmt::format(
+        diff_template,
+        escape_string(std::string(line->content, line->content_len))
     );
+
+    return 0;
 }
 
 void RepoHtmlGen::get_commit_info(git_commit *commit, CommitInfo &info)
@@ -442,6 +486,30 @@ void RepoHtmlGen::get_commit_info(git_commit *commit, CommitInfo &info)
     }
 }
 
+void RepoHtmlGen::generate_commit_page(const CommitInfo &info)
+{
+    std::ofstream out_stream("public/" + m_repo_name + "/commits/" + info.id_str + ".html", std::ios::out);
+    if (!out_stream.is_open())
+        error("failed to open output file.");
+
+    diff_printer_passthrough passthrough(MAX_DIFF_LINE_COUNT);
+    passthrough.html.reserve(256);
+    git_diff_print(info.diff, GIT_DIFF_FORMAT_PATCH, &diff_printer, &passthrough);
+
+    out_stream << fmt::format(
+        commit_page_template,
+        fmt::arg("reponame", m_repo_name),
+        fmt::arg("headercontent", m_header_content),
+        fmt::arg("date", to_string(info.time)),
+        fmt::arg("message", escape_string(info.summary)),
+        fmt::arg("author", escape_string(info.author->name)),
+        fmt::arg("email", escape_string(info.author->email)),
+        fmt::arg("commit", info.id_str),
+        fmt::arg("parent", info.parent_id_str),
+        fmt::arg("diff_content", passthrough.html)
+    );
+}
+
 RepoHtmlGen::CommitInfo::~CommitInfo()
 {
     git_commit_free(commit);
@@ -493,13 +561,13 @@ void RepoHtmlGen::generate_commits()
 
         commits_html += fmt::format(
             commits_line_template,
-            fmt::arg("date", to_string(commit_info.time)),
-            fmt::arg("message", escape_string(commit_info.summary)),
-            fmt::arg("author", escape_string(commit_info.author->name)),
             fmt::arg("files", commit_info.files),
             fmt::arg("gain", commit_info.gain),
             fmt::arg("loss", commit_info.loss),
-            fmt::arg("commit_link", '/' + m_repo_name + "/commits/" + commit_info.id_str + ".html")
+            fmt::arg("commit_link", '/' + m_repo_name + "/commits/" + commit_info.id_str + ".html"),
+            fmt::arg("date", to_string(commit_info.time)),
+            fmt::arg("author", escape_string(commit_info.author->name)),
+            fmt::arg("message", escape_string(commit_info.summary))
         );
     }
 
