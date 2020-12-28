@@ -11,8 +11,6 @@
 #include <unordered_set>
 #include <fmt/core.h>
 #include <fmt/format.h>
-// TODO: remove
-#include <fmt/color.h>
 #include "html.h"
 #include "repo.h"
 #include "templates.h"
