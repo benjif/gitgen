@@ -517,7 +517,7 @@ void RepoHtmlGen::generate_commit_page(const CommitInfo &info)
         fmt::arg("repo_name", m_repo_name),
         fmt::arg("header_content", m_header_content),
         fmt::arg("date", to_string(info.time)),
-        fmt::arg("message", escape_string(info.summary)),
+        fmt::arg("message", escape_string(info.message)),
         fmt::arg("author", escape_string(info.author->name)),
         fmt::arg("email", escape_string(info.author->email)),
         fmt::arg("commit", info.id_str),
@@ -583,7 +583,7 @@ void RepoHtmlGen::generate_commits()
             fmt::arg("commit_link", '/' + m_repo_name + "/commits/" + commit_info.id_str + ".html"),
             fmt::arg("date", to_string(commit_info.time)),
             fmt::arg("author", escape_string(commit_info.author->name)),
-            fmt::arg("message", escape_string(commit_info.summary))
+            fmt::arg("summary", escape_string(commit_info.summary))
         );
     }
 

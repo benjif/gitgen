@@ -39,7 +39,7 @@ const char *commit_page_template =
 ;
 
 const char *commits_line_template =
-    "<tr><td>{date}</td><td><a href=\"{commit_link}\">{message}</a></td><td>{author}</td><td>{files}</td>"
+    "<tr><td>{date}</td><td><a href=\"{commit_link}\">{summary}</a></td><td>{author}</td><td>{files}</td>"
     "<td>{gain}</td><td>{loss}</td></tr>";
 
 const char *diff_line_template =
