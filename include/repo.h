@@ -6,21 +6,29 @@
 #include <git2.h>
 #include <git2/global.h>
 
+#include "fmt/format.h"
+
 class RepoHtmlGen {
 public:
-    // TODO: add cli options to change these values
     static const size_t MAX_COMMIT_COUNT = 100;
+    static const size_t MAX_DIFF_LINE_COUNT = 1024;
     static const size_t MAX_VIEW_FILESIZE = 0x400 * 256; // 256 KiB
 
-    // TODO: make a max diff line count but per file
-    static const size_t MAX_DIFF_LINE_COUNT = 1024;
+    struct Options {
+        std::string repo_path;
+        size_t max_commits { MAX_COMMIT_COUNT };
+        size_t max_diff_lines { MAX_DIFF_LINE_COUNT };
+        size_t max_view_filesize { MAX_VIEW_FILESIZE };
+    };
 
-    RepoHtmlGen(const std::string &repo_path);
+    RepoHtmlGen(const Options &opt);
     ~RepoHtmlGen();
 
     void generate();
 
 private:
+    Options m_options;
+
     RepoHtmlGen(RepoHtmlGen &&) = delete;
     RepoHtmlGen(const RepoHtmlGen &) = delete;
 
@@ -71,13 +79,12 @@ private:
     std::string m_header_content;
     std::string m_description;
 
-    int m_err { 0 };
     git_commit *m_head_commit { nullptr};
     git_repository *m_repo { nullptr };
     git_index *m_index { nullptr };
     git_tree *m_tree { nullptr };
+    int m_err { 0 };
 
-    const git_index_entry *m_readme { nullptr };
     std::string m_readme_content;
 };
 

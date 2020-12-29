@@ -6,7 +6,8 @@
 
 namespace fs = std::filesystem;
 
-IndexHtmlGen::IndexHtmlGen()
+IndexHtmlGen::IndexHtmlGen(const Options &opt)
+    : m_options(opt)
 {
     for (auto &sub : fs::directory_iterator("public")) {
         if (sub.path() != "css")

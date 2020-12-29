@@ -106,12 +106,13 @@ git_commit *RepoHtmlGen::last_commit()
 static const char *default_description =
     "Unnamed repository; edit this file 'description' to name the repository.\n";
 
-RepoHtmlGen::RepoHtmlGen(const std::string &repo_path)
-    : m_repo_path(fs::absolute(repo_path))
+RepoHtmlGen::RepoHtmlGen(const Options &opt)
+    : m_options(opt),
+      m_repo_path(fs::absolute(opt.repo_path))
 {
     if ((m_err = git_libgit2_init()) < 0)
         error("failed to initialize libgit2");
-    if ((m_err = git_repository_open(&m_repo, repo_path.c_str())) < 0)
+    if ((m_err = git_repository_open(&m_repo, m_repo_path.c_str())) < 0)
         error("failed to open repository");
     if ((m_err = git_repository_index(&m_index, m_repo)) < 0)
         error("failed to retrieve repository index");
@@ -187,7 +188,7 @@ void RepoHtmlGen::generate_file_page_code(const std::string &file_path, std::str
 
     in_stream.seekg(0, std::ios::end);
     size_t filesize = in_stream.tellg();
-    if (filesize > MAX_VIEW_FILESIZE) {
+    if (filesize > m_options.max_view_filesize) {
         html = "File is too large to view.";
         return;
     }
@@ -258,12 +259,11 @@ void RepoHtmlGen::generate_files()
 
         std::string filename = std::string(entry->path);
         if (is_readme(filename)) {
-            m_readme = entry;
             std::string readme_content;
-            generate_file_page_code(m_repo_path + '/' + m_readme->path, readme_content);
+            generate_file_page_code(m_repo_path + '/' + entry->path, readme_content);
             m_readme_content = fmt::format(
                  file_view_template,
-                 fmt::arg("filename", m_readme->path),
+                 fmt::arg("filename", entry->path),
                  fmt::arg("file_content", readme_content),
                  fmt::arg("file_size", ""),
                  fmt::arg("file_size_unit", "")
@@ -506,9 +506,9 @@ void RepoHtmlGen::generate_commit_page(const CommitInfo &info)
         error("failed to open output file.");
 
     size_t diff_size_est =
-        std::min(info.gain + info.loss + info.files * 4 + info.hunks, MAX_DIFF_LINE_COUNT) * LINE_SIZE_EST;
+        std::min(info.gain + info.loss + info.files * 4 + info.hunks, m_options.max_diff_lines) * LINE_SIZE_EST;
 
-    diff_printer_passthrough passthrough(MAX_DIFF_LINE_COUNT);
+    diff_printer_passthrough passthrough(m_options.max_diff_lines);
     passthrough.html.reserve(diff_size_est);
     git_diff_print(info.diff, GIT_DIFF_FORMAT_PATCH, &diff_printer, &passthrough);
 
@@ -552,8 +552,8 @@ void RepoHtmlGen::generate_commits()
         error("failed to push repository head to revision walker");
 
     git_commit *nth_commit;
-    if ((m_err = git_commit_nth_gen_ancestor(&nth_commit, m_head_commit, MAX_COMMIT_COUNT)) == 0) {
-        // this should be slightly faster than manually counting and breaking past MAX_COMMIT_COUNT
+    if ((m_err = git_commit_nth_gen_ancestor(&nth_commit, m_head_commit, m_options.max_commits)) == 0) {
+        // this should be slightly faster than manually counting and breaking past m_options.max_commits
         // (see https://github.com/libgit2/libgit2/issues/4428#issuecomment-465959268)
         git_revwalk_hide(walk, git_commit_id(nth_commit));
         git_commit_free(nth_commit);
@@ -562,9 +562,9 @@ void RepoHtmlGen::generate_commits()
     git_revwalk_sorting(walk, GIT_SORT_TOPOLOGICAL | GIT_SORT_TIME);
     git_revwalk_simplify_first_parent(walk);
 
-    // TODO: paginate?
     std::string commits_html;
-    commits_html.reserve(512); // this feels dirty
+    // crude estimation
+    commits_html.reserve(m_options.max_commits * sizeof(commits_line_template));
 
     while (git_revwalk_next(&oid, walk) == 0) {
         git_commit *commit;

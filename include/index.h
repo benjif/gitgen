@@ -6,12 +6,17 @@
 
 class IndexHtmlGen {
 public:
-    IndexHtmlGen();
+    struct Options {
+    };
+
+    IndexHtmlGen(const Options &opt);
     ~IndexHtmlGen();
 
     void generate();
 
 private:
+    Options m_options;
+
     IndexHtmlGen(IndexHtmlGen &&) = delete;
     IndexHtmlGen(const IndexHtmlGen &) = delete;
 

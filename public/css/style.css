@@ -74,6 +74,10 @@ ul#reponav {
     display: inline-block;
 }
 
+#repodesc:not(:empty)::before {
+    content: ' - ';
+}
+
 table td, table th {
     padding-left: 8px;
     padding-right: 8px;
