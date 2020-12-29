@@ -2,13 +2,11 @@ NAME = gitgen
 
 CFLAGS := -Wall -Wextra -std=c++20 -lgit2 \
 	-L/usr/local/lib -Iinclude -I/usr/local/include -I. \
-	-D FMT_HEADER_ONLY -O2#\
-	#-g -O0 # TODO: REMOVE LATER
+	-D FMT_HEADER_ONLY -O2
 OBJ_FILES :=	src/gitgen.o \
 				src/templates.o	\
 				src/index.o	\
-				src/repo.o \
-				src/html.o
+				src/repo.o
 
 all: release
 .PHONY: all

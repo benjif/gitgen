@@ -5,10 +5,12 @@
 #include "repo.h"
 #include "index.h"
 
+namespace fs = std::filesystem;
+
 static void usage(char *name)
 {
     fmt::print(stderr, "usage: {} repo <path> [--max-commits <max>] [--max-filesize <max>] [--max-diff-lines <max>]\n", name);
-    fmt::print(stderr, "       {} index\n", name);
+    fmt::print(stderr, "       {} index <repo path>...\n", name);
     exit(1);
 }
 
@@ -22,7 +24,11 @@ struct Args {
         Index
     } cmd_type { CmdType::None };
 
-    std::variant<RepoHtmlGen::Options, IndexHtmlGen::Options> options;
+    //std::variant<RepoHtmlGen::Options, IndexHtmlGen::Options> options;
+
+    RepoHtmlGen::Options repo_options;
+    IndexHtmlGen::Options index_options;
+
     bool touched_repo_options { false };
     bool touched_index_options { false };
 };
@@ -35,10 +41,10 @@ int main(int argc, char **argv)
     Args args(argc, argv);
 
     if (args.cmd_type == Args::CmdType::Repo) {
-        RepoHtmlGen gen(std::get<RepoHtmlGen::Options>(args.options));
+        RepoHtmlGen gen(args.repo_options);
         gen.generate();
     } else if (args.cmd_type == Args::CmdType::Index) {
-        IndexHtmlGen gen(std::get<IndexHtmlGen::Options>(args.options));
+        IndexHtmlGen gen(args.index_options);
         gen.generate();
     }
 
@@ -56,7 +62,7 @@ Args::Args(size_t argc, char **argv)
         if (arg == "repo") {
             if (++i >= argc)
                 usage(argv[0]);
-            std::get<RepoHtmlGen::Options>(options).repo_path = argv[i];
+            repo_options.repo_path = argv[i];
             cmd_type = CmdType::Repo;
             touched_repo_options = true;
         } else if (arg == "index") {
@@ -66,20 +72,22 @@ Args::Args(size_t argc, char **argv)
             if (++i >= argc)
                 usage(argv[0]);
             const std::string arg1(argv[i]);
-            std::get<RepoHtmlGen::Options>(options).max_commits = std::stoi(arg1);
+            repo_options.max_commits = std::stoi(arg1);
             touched_repo_options = true;
         } else if (arg == "--max-filesize") {
             if (++i >= argc)
                 usage(argv[0]);
             const std::string arg1(argv[i]);
-            std::get<RepoHtmlGen::Options>(options).max_view_filesize = std::stoi(arg1);
+            repo_options.max_view_filesize = std::stoi(arg1);
             touched_repo_options = true;
         } else if (arg == "--max-diff-lines") {
             if (++i >= argc)
                 usage(argv[0]);
             const std::string arg1(argv[i]);
-            std::get<RepoHtmlGen::Options>(options).max_diff_lines = std::stoi(arg1);
+            repo_options.max_diff_lines = std::stoi(arg1);
             touched_repo_options = true;
+        } else if (cmd_type == CmdType::Index) {
+            index_options.repo_paths.push_back(argv[i]);
         } else {
             usage(argv[0]);
         }
@@ -90,7 +98,9 @@ Args::Args(size_t argc, char **argv)
     if ((cmd_type == CmdType::Repo && touched_index_options) ||
             (cmd_type == CmdType::Index && touched_repo_options))
         usage(argv[0]);
-    if (cmd_type == CmdType::Repo && std::get<RepoHtmlGen::Options>(options).repo_path == "")
+    if (cmd_type == CmdType::Repo && repo_options.repo_path == "")
+        usage(argv[0]);
+    if (cmd_type == CmdType::Index && index_options.repo_paths.size() == 0)
         usage(argv[0]);
 }
 

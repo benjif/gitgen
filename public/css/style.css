@@ -19,7 +19,7 @@ a:hover {
 
 #content {
     font-family: monospace;
-    max-width: 106ch;
+    max-width: 100ch;
     display: block;
     margin-left: auto;
     margin-right: auto;
@@ -39,15 +39,15 @@ ol#codeblock {
 }
 
 #codeblock li pre {
-    padding-top: 2px;
-    padding-bottom: 2px;
+    padding-top: 1px;
+    padding-bottom: 1px;
     margin: 0;
 }
 
 #codeblock li pre::before {
     margin-right: 10px;
     padding-right: 4px;
-    width: 2em;
+    width: 1.5em;
     text-align: center;
     display: inline-block;
     color: #888;
@@ -128,10 +128,6 @@ tr.toptr td {
     margin-top: 20px;
 }
 
-#diff {
-    /*margin-top: 20px;*/
-}
-
 .diff_add {
     color: green;
 }
@@ -141,7 +137,7 @@ tr.toptr td {
 }
 
 .diff_file_hdr {
-    /*font-weight: bold;*/
+    color: gray;
 }
 
 .diff_hunk_hdr {
@@ -184,10 +180,6 @@ pre.diff_hunk_hdr {
     margin: 0;
 }
 
-pre.diff_file_hdr {
-    color: gray;
-}
-
 #filename {
     padding-bottom: 4px;
     border-bottom: 1px solid black;
@@ -196,4 +188,16 @@ pre.diff_file_hdr {
 
 #file_size {
     float: right;
+}
+
+table#repos {
+    width: 100%;
+}
+
+table#repos tr:nth-child(odd) {
+    background-color: #fff;
+}
+
+table#repos tr:nth-child(even) {
+    background-color: #eee;
 }

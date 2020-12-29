@@ -58,3 +58,6 @@ const char *diff_hunk_hdr_template =
     "<a id=\"hunk{}\" href=\"#hunk{}\"><pre class=\"diff_hunk_hdr\">{}</pre></a>";
 const char *diff_max_line_count =
     "<div class=\"diff_max\">Max diff line count reached.</div>";
+
+const char *index_line_template =
+    "<tr><td><a href=\"/{name}\">{name}</a></td><td>{desc}</td><td>{author}</td><td>{updated}</td></tr>";

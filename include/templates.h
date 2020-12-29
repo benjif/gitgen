@@ -9,8 +9,6 @@ extern const char *file_index_template;
 extern const char *file_tree_line_template;
 extern const char *file_tree_line_dir_template;
 
-extern const char *index_page_template;
-
 extern const char *commits_page_template;
 extern const char *commit_page_template;
 extern const char *commits_line_template;
@@ -23,5 +21,8 @@ extern const char *diff_del_eofnl_template;
 extern const char *diff_file_hdr_template;
 extern const char *diff_hunk_hdr_template;
 extern const char *diff_max_line_count;
+
+extern const char *index_page_template;
+extern const char *index_line_template;
 
 #endif

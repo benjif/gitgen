@@ -11,37 +11,11 @@
 #include <unordered_set>
 #include <fmt/core.h>
 #include <fmt/format.h>
-#include "html.h"
 #include "repo.h"
+#include "extra.h"
 #include "templates.h"
 
-#define GiB 0x40000000
-#define MiB 0x100000
-#define KiB 0x400
-
 namespace fs = std::filesystem;
-
-template <typename T>
-static std::string to_string_precision(const T value, size_t precision)
-{
-    std::ostringstream ret;
-    ret.precision(precision);
-    ret << std::fixed << value;
-    return ret.str();
-}
-
-static char lowercase(char c)
-{
-    if (c >= 'A' && c <= 'Z')
-        return c - ('Z' - 'z');
-    return c;
-}
-
-static inline void to_lowercase(std::string &str)
-{
-    std::transform(str.begin(), str.end(),
-            str.begin(), lowercase);
-}
 
 static inline bool is_readme(std::string &filename)
 {
@@ -49,25 +23,6 @@ static inline bool is_readme(std::string &filename)
     if (filename == "readme.md" || filename == "readme.txt")
         return true;
     return false;
-}
-
-static inline std::string to_string(git_time_t time)
-{
-    std::stringstream sstream;
-    sstream << std::put_time(std::localtime(&time), "%Y-%m-%d %H:%M");
-    return sstream.str();
-}
-
-static std::pair<std::string, std::string> inline format_filesize(size_t rawsize)
-{
-    if (rawsize >= GiB)
-        return std::make_pair(to_string_precision((double)rawsize / GiB, 2), "GiB");
-    else if (rawsize >= MiB)
-        return std::make_pair(to_string_precision((double)rawsize / MiB, 2), "MiB");
-    else if (rawsize >= KiB)
-        return std::make_pair(to_string_precision((double)rawsize / KiB, 2), "KiB");
-
-    return std::make_pair(std::to_string(rawsize), "B");
 }
 
 void RepoHtmlGen::cleanup()
@@ -102,9 +57,6 @@ git_commit *RepoHtmlGen::last_commit()
 
     return commit;
 }
-
-static const char *default_description =
-    "Unnamed repository; edit this file 'description' to name the repository.\n";
 
 RepoHtmlGen::RepoHtmlGen(const Options &opt)
     : m_options(opt),
