@@ -2,7 +2,7 @@ NAME = gitgen
 
 CFLAGS := -Wall -Wextra -std=c++20 -lgit2 \
 	-L/usr/local/lib -Iinclude -I/usr/local/include -I. \
-	-D FMT_HEADER_ONLY -O2 #\
+	-D FMT_HEADER_ONLY -O2 -g #\
 	#-g -O0 # TODO: REMOVE LATER
 OBJ_FILES :=	src/gitgen.o \
 				src/templates.o	\

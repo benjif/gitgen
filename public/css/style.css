@@ -25,12 +25,6 @@ a:hover {
     margin-right: auto;
 }
 
-#filename {
-    padding-bottom: 4px;
-    border-bottom: 1px solid black;
-    width: 100%;
-}
-
 ol#codeblock {
     margin-left: 0;
     padding-left: 0;
@@ -74,6 +68,10 @@ ul#reponav {
 
 #reponav a {
     display: block;
+}
+
+#repodesc {
+    display: inline-block;
 }
 
 table td, table th {
@@ -184,4 +182,14 @@ pre.diff_hunk_hdr {
 
 pre.diff_file_hdr {
     color: gray;
+}
+
+#filename {
+    padding-bottom: 4px;
+    border-bottom: 1px solid black;
+    width: 100%;
+}
+
+#file_size {
+    float: right;
 }

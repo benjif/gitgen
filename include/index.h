@@ -2,11 +2,11 @@
 #define INDEX_H
 
 #include <vector>
-#include <string>
+#include <filesystem>
 
 class IndexHtmlGen {
 public:
-    IndexHtmlGen(std::vector<std::string> &repo_paths);
+    IndexHtmlGen();
     ~IndexHtmlGen();
 
     void generate();
@@ -14,6 +14,8 @@ public:
 private:
     IndexHtmlGen(IndexHtmlGen &&) = delete;
     IndexHtmlGen(const IndexHtmlGen &) = delete;
+
+    std::vector<std::filesystem::path> m_repo_paths;
 };
 
 #endif

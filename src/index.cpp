@@ -1,10 +1,23 @@
+#include <fstream>
+#include <iostream>
+#include <filesystem>
 #include "index.h"
 #include "templates.h"
 
-IndexHtmlGen::IndexHtmlGen(std::vector<std::string> &repo_paths)
+namespace fs = std::filesystem;
+
+IndexHtmlGen::IndexHtmlGen()
 {
+    for (auto &sub : fs::directory_iterator("public")) {
+        if (sub.path() != "css")
+            m_repo_paths.push_back(sub.path());
+    }
 }
 
 IndexHtmlGen::~IndexHtmlGen()
+{
+}
+
+void IndexHtmlGen::generate()
 {
 }

@@ -58,6 +58,18 @@ static inline std::string to_string(git_time_t time)
     return sstream.str();
 }
 
+static std::pair<std::string, std::string> inline format_filesize(size_t rawsize)
+{
+    if (rawsize >= GiB)
+        return std::make_pair(to_string_precision((double)rawsize / GiB, 2), "GiB");
+    else if (rawsize >= MiB)
+        return std::make_pair(to_string_precision((double)rawsize / MiB, 2), "MiB");
+    else if (rawsize >= KiB)
+        return std::make_pair(to_string_precision((double)rawsize / KiB, 2), "KiB");
+
+    return std::make_pair(std::to_string(rawsize), "B");
+}
+
 void RepoHtmlGen::cleanup()
 {
     if (m_repo)
@@ -91,6 +103,9 @@ git_commit *RepoHtmlGen::last_commit()
     return commit;
 }
 
+static const char *default_description =
+    "Unnamed repository; edit this file 'description' to name the repository.\n";
+
 RepoHtmlGen::RepoHtmlGen(const std::string &repo_path)
     : m_repo_path(fs::absolute(repo_path))
 {
@@ -118,12 +133,25 @@ RepoHtmlGen::RepoHtmlGen(const std::string &repo_path)
 
     to_lowercase(m_repo_name);
 
+    if (fs::exists(m_repo_path + "/description")) {
+        std::ifstream in_stream(m_repo_path + "/description");
+        std::ostringstream in_sstream;
+        in_sstream << in_stream.rdbuf();
+        m_description = escape_string(in_sstream.str());
+    } else if (fs::exists(m_repo_path + "/.git/description")) {
+        std::ifstream in_stream(m_repo_path + "/.git/description");
+        std::ostringstream in_sstream;
+        in_sstream << in_stream.rdbuf();
+        if (in_sstream.str() != default_description)
+            m_description = escape_string(in_sstream.str());
+    }
+
     m_header_content = fmt::format(
         header_template,
-        fmt::arg("reponame", m_repo_name),
-        fmt::arg("repodesc", ""),
-        fmt::arg("filespath", '/' + m_repo_name + "/index.html"),
-        fmt::arg("commitspath", '/' + m_repo_name + "/commits.html")
+        fmt::arg("repo_name", m_repo_name),
+        fmt::arg("repo_desc", m_description),
+        fmt::arg("files_path", '/' + m_repo_name + "/index.html"),
+        fmt::arg("commits_path", '/' + m_repo_name + "/commits.html")
     );
 
     if (fs::exists("public/" + m_repo_name))
@@ -168,7 +196,9 @@ void RepoHtmlGen::generate_file_page_code(const std::string &file_path, std::str
     in_stream.seekg(0, std::ios::beg);
 
     std::string line;
+    size_t line_no = 0;
     while (std::getline(in_stream, line)) {
+        line_no++;
         html += fmt::format(
             file_line_template,
             fmt::arg("line", escape_string(line))
@@ -194,26 +224,29 @@ void RepoHtmlGen::generate_file_page(const git_index_entry *entry)
     else
         generate_file_page_code(file_path, html_file_content);
 
-    git_object_free(obj);
-
     std::ofstream out_stream("public/" + m_repo_name + "/files/" + std::string(entry->path) + ".html",
             std::ios::out);
     if (!out_stream.is_open())
         error("failed to open output file.");
 
+    auto size_info = format_filesize(git_blob_rawsize((git_blob *)obj));
     out_stream << fmt::format(
         file_page_template,
-        fmt::arg("headercontent", m_header_content),
-        fmt::arg("reponame", m_repo_name),
+        fmt::arg("header_content", m_header_content),
+        fmt::arg("repo_name", m_repo_name),
         fmt::arg("filename", entry->path),
-        fmt::arg("fileviewcontent",
+        fmt::arg("fileview_content",
             fmt::format(
                 file_view_template,
                 fmt::arg("filename", entry->path),
-                fmt::arg("filecontent", html_file_content)
+                fmt::arg("file_content", html_file_content),
+                fmt::arg("file_size", size_info.first),
+                fmt::arg("file_size_unit", size_info.second)
             )
         )
     );
+
+    git_object_free(obj);
 }
 
 void RepoHtmlGen::generate_files()
@@ -224,8 +257,18 @@ void RepoHtmlGen::generate_files()
         generate_file_page(entry);
 
         std::string filename = std::string(entry->path);
-        if (is_readme(filename))
-           m_readme = entry; 
+        if (is_readme(filename)) {
+            m_readme = entry;
+            std::string readme_content;
+            generate_file_page_code(m_repo_path + '/' + m_readme->path, readme_content);
+            m_readme_content = fmt::format(
+                 file_view_template,
+                 fmt::arg("filename", m_readme->path),
+                 fmt::arg("file_content", readme_content),
+                 fmt::arg("file_size", ""),
+                 fmt::arg("file_size_unit", "")
+            );
+        }
     }
 }
 
@@ -257,18 +300,6 @@ git_commit *RepoHtmlGen::file_last_modified(git_object *obj)
 }
 */
 
-static std::pair<std::string, std::string> inline format_filesize(size_t rawsize)
-{
-    if (rawsize >= GiB)
-        return std::make_pair(to_string_precision((double)rawsize / GiB, 2), "GiB");
-    else if (rawsize >= MiB)
-        return std::make_pair(to_string_precision((double)rawsize / MiB, 2), "MiB");
-    else if (rawsize >= KiB)
-        return std::make_pair(to_string_precision((double)rawsize / KiB, 2), "KiB");
-
-    return std::make_pair(std::to_string(rawsize), "B");
-}
-
 void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
 {
     fs::path html_path =
@@ -283,7 +314,6 @@ void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
 
     size_t tree_entry_count = git_tree_entrycount(tree);
 
-    // we really need more than this TODO: optimize further?
     std::string tree_html;
     tree_html.reserve(tree_entry_count * sizeof(file_tree_line_template));
     for (size_t i = 0; i < tree_entry_count; i++) {
@@ -298,10 +328,7 @@ void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
         if ((m_err = git_tree_entry_to_object(&obj, m_repo, entry)) < 0)
             error("failed to convert tree entry to object");
 
-        switch (git_tree_entry_type(entry)) {
-        case GIT_OBJ_BLOB:
-            break;
-        case GIT_OBJ_TREE:
+        if (git_tree_entry_type(entry) == GIT_OBJ_TREE) {
             generate_index((git_tree *)obj, root + entry_name + '/');
             tree_html += fmt::format(
                 file_tree_line_dir_template,
@@ -310,8 +337,6 @@ void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
             );
             git_object_free(obj);
             continue;
-        default:
-            break;
         }
 
         auto size_info = format_filesize(git_blob_rawsize((git_blob *)obj));
@@ -326,24 +351,12 @@ void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
         git_object_free(obj);
     }
 
-    std::string readme_code_html;
-    if (m_readme != nullptr)
-        generate_file_page_code(m_repo_path + '/' + m_readme->path, readme_code_html);
-
     out_stream << fmt::format(
         file_index_template,
-        fmt::arg("headercontent", m_header_content),
-        fmt::arg("reponame", m_repo_name),
-        fmt::arg("repodesc", ""), // TODO
-        fmt::arg("treecontent", tree_html),
-        fmt::arg("readmecontent",
-            m_readme == nullptr ? "" :
-                 fmt::format(
-                     file_view_template,
-                     fmt::arg("filename", m_readme->path),
-                     fmt::arg("filecontent", readme_code_html)
-                 )
-        )
+        fmt::arg("header_content", m_header_content),
+        fmt::arg("repo_name", m_repo_name),
+        fmt::arg("tree_content", tree_html),
+        fmt::arg("readme_content", m_readme_content)
     );
 }
 
@@ -501,8 +514,8 @@ void RepoHtmlGen::generate_commit_page(const CommitInfo &info)
 
     out_stream << fmt::format(
         commit_page_template,
-        fmt::arg("reponame", m_repo_name),
-        fmt::arg("headercontent", m_header_content),
+        fmt::arg("repo_name", m_repo_name),
+        fmt::arg("header_content", m_header_content),
         fmt::arg("date", to_string(info.time)),
         fmt::arg("message", escape_string(info.summary)),
         fmt::arg("author", escape_string(info.author->name)),
@@ -539,12 +552,12 @@ void RepoHtmlGen::generate_commits()
         error("failed to push repository head to revision walker");
 
     git_commit *nth_commit;
-    git_commit_nth_gen_ancestor(&nth_commit, m_head_commit, MAX_COMMIT_COUNT);
-
-    // this should be slightly faster than manually counting and breaking past MAX_COMMIT_COUNT
-    // (see https://github.com/libgit2/libgit2/issues/4428#issuecomment-465959268)
-    git_revwalk_hide(walk, git_commit_id(nth_commit));
-    git_commit_free(nth_commit);
+    if ((m_err = git_commit_nth_gen_ancestor(&nth_commit, m_head_commit, MAX_COMMIT_COUNT)) == 0) {
+        // this should be slightly faster than manually counting and breaking past MAX_COMMIT_COUNT
+        // (see https://github.com/libgit2/libgit2/issues/4428#issuecomment-465959268)
+        git_revwalk_hide(walk, git_commit_id(nth_commit));
+        git_commit_free(nth_commit);
+    }
 
     git_revwalk_sorting(walk, GIT_SORT_TOPOLOGICAL | GIT_SORT_TIME);
     git_revwalk_simplify_first_parent(walk);
@@ -582,8 +595,8 @@ void RepoHtmlGen::generate_commits()
 
     out_stream << fmt::format(
         commits_page_template,
-        fmt::arg("reponame", m_repo_name),
-        fmt::arg("headercontent", m_header_content),
-        fmt::arg("commitscontent", commits_html)
+        fmt::arg("repo_name", m_repo_name),
+        fmt::arg("header_content", m_header_content),
+        fmt::arg("commits_content", commits_html)
     );
 }

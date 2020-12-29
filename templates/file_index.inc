@@ -1,12 +1,12 @@
 R"(<!DOCTYPE html>
 <head>
-<title>{reponame}</title>
+<title>{repo_name}</title>
 <meta charset="UTF-8">
 <link rel="stylesheet" type="text/css" href="/css/style.css">
 </head>
 <body>
 <div id="content">
-{headercontent}
+{header_content}
 <table cellspacing="0" cellpadding="2" id="repotree">
 <thead>
 <tr class="toptr">
@@ -16,11 +16,11 @@ R"(<!DOCTYPE html>
 <tr>
 </thead>
 <tbody>
-{treecontent}
+{tree_content}
 </tbody>
 </table>
 <div id="readmeview">
-{readmecontent}
+{readme_content}
 </div>
 </div>
 </body>

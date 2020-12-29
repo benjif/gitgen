@@ -1,8 +1,8 @@
 R"(<div id="header">
-<div id="reponame">{reponame}</div>
-<div id="repodesc">{repodesc}</div>
+<span id="reponame">{repo_name}</span> - 
+<span id="repodesc">{repo_desc}</span>
 <ul id="reponav">
-<li><a href="{filespath}">Files</a></li>
-<li><a href="{commitspath}">Commits</a></li>
+<li><a href="{files_path}">Files</a></li>
+<li><a href="{commits_path}">Commits</a></li>
 </ul>
 </div>)"

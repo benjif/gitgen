@@ -1,6 +1,6 @@
 R"(<!DOCTYPE html>
 <head>
-<title></title>
+<title>{repo_name}</title>
 <meta charset="UTF-8">
 <link rel="stylesheet" type="text/css" href="/css/style.css">
 </head>

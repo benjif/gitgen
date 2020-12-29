@@ -2,6 +2,7 @@
 #define REPO_H
 
 #include <string>
+#include <vector>
 #include <git2.h>
 #include <git2/global.h>
 
@@ -68,6 +69,7 @@ private:
     std::string m_repo_path;
     std::string m_repo_name;
     std::string m_header_content;
+    std::string m_description;
 
     int m_err { 0 };
     git_commit *m_head_commit { nullptr};
@@ -76,6 +78,7 @@ private:
     git_tree *m_tree { nullptr };
 
     const git_index_entry *m_readme { nullptr };
+    std::string m_readme_content;
 };
 
 #endif
