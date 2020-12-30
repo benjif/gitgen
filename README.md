@@ -4,15 +4,15 @@
 
 ### Without syntax highlighting
 
+```
+make && sudo make install
+```
+
 ### With syntax highlighting
 
 ```
 COLOR=TRUE make
 sudo make install-color && sudo make install
-```
-
-```
-make && sudo make install
 ```
 
 ## Usage
