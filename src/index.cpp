@@ -58,6 +58,9 @@ IndexHtmlGen::IndexHtmlGen(const Options &opt)
         else
             meta.name = meta.path.substr(path_split_pos + 1);
 
+        if (meta.name.ends_with(".git"))
+            meta.name.resize(meta.name.size() - 4);
+
         to_lowercase(meta.name);
         escape_string(meta.name);
 

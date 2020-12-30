@@ -87,6 +87,9 @@ RepoHtmlGen::RepoHtmlGen(const Options &opt)
     else
         m_repo_name = m_repo_path.substr(path_split_pos + 1);
 
+    if (m_repo_name.ends_with(".git"))
+        m_repo_name.resize(m_repo_name.size() - 4);
+
     to_lowercase(m_repo_name);
 
     if (fs::exists(m_repo_path + "/description")) {
