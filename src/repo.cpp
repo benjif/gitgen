@@ -338,10 +338,11 @@ void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
 
     out_stream << fmt::format(
         file_index_template,
-        fmt::arg("header_content", m_header_content),
         fmt::arg("repo_name", m_repo_name),
+        fmt::arg("header_content", m_header_content),
+        fmt::arg("readme_content", root == "" ? m_readme_content : ""),
         fmt::arg("tree_content", tree_html),
-        fmt::arg("readme_content", m_readme_content)
+        fmt::arg("tree_path", root)
     );
 }
 

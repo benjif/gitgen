@@ -7,6 +7,7 @@ R"(<!DOCTYPE html>
 <body>
 <div id="content">
 {header_content}
+<div id="treepath">{tree_path}</div>
 <table cellspacing="0" cellpadding="2" id="repotree">
 <thead>
 <tr class="toptr">

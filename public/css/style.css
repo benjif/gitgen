@@ -201,3 +201,13 @@ table#repos tr:nth-child(odd) {
 table#repos tr:nth-child(even) {
     background-color: #eee;
 }
+
+#treepath {
+    padding-bottom: 4px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid black;
+}
+
+#treepath:empty {
+    display: none;
+}
