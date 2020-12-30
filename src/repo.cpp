@@ -263,6 +263,8 @@ void RepoHtmlGen::generate_file_pages()
             auto result = render_markdown(m_repo_path + '/' + entry->path, m_readme_content);
             if (result == MarkdownResult::FAILURE)
                 error("failed to render markdown");
+            m_readme_content.insert(0, markdown_pre);
+            m_readme_content.append(markdown_post);
 #endif
         }
     }

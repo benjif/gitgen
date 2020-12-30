@@ -25,4 +25,7 @@ extern const char *diff_max_line_count;
 extern const char *index_page_template;
 extern const char *index_line_template;
 
+extern const char *markdown_pre;
+extern const char *markdown_post;
+
 #endif

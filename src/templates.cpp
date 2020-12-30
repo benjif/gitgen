@@ -61,3 +61,8 @@ const char *diff_max_line_count =
 
 const char *index_line_template =
     "<tr><td><a href=\"/{name}\">{name}</a></td><td>{desc}</td><td>{updated}</td></tr>";
+
+const char *markdown_pre =
+    "<div id=\"markdown\">";
+const char *markdown_post =
+    "</div>";
