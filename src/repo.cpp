@@ -125,42 +125,69 @@ const git_oid *RepoHtmlGen::head()
     return head_oid;
 }
 
+static const std::string README_FILENAMES[] = {
+    "README.md",
+    "readme.md",
+    "README.txt",
+    "readme.txt",
+    "README",
+};
+
+void RepoHtmlGen::find_readme()
+{
+    git_object *readme_obj;
+    for (auto &readme_filename : README_FILENAMES) {
+        if (!git_revparse_single(&readme_obj, m_repo, ("HEAD:" + readme_filename).c_str())) {
+#ifndef MARKDOWN
+            std::string readme_content;
+            generate_file_code_page(readme_filename, (git_blob *)readme_obj, readme_content);
+            m_readme_content = fmt::format(
+                 file_view_template,
+                 fmt::arg("filename", readme_filename),
+                 fmt::arg("file_content", readme_content),
+                 fmt::arg("file_size", ""),
+                 fmt::arg("file_size_unit", "")
+            );
+#else
+            const char *raw_readme_content =
+                (const char *)git_blob_rawcontent((git_blob *)readme_obj);
+            size_t raw_readme_size = git_blob_rawsize((git_blob *)readme_obj);
+
+            auto result = render_markdown(raw_readme_content, raw_readme_size, m_readme_content);
+            if (result == MarkdownResult::FAILURE)
+                error("failed to render markdown");
+
+            m_readme_content.insert(0, markdown_pre);
+            m_readme_content.append(markdown_post);
+#endif
+            git_object_free(readme_obj);
+            break;
+        }
+    }
+}
+
 void RepoHtmlGen::generate()
 {
-    // it might be more efficient to merge generate_file_pages() and generate_tree_pages()
-    // we would still need a fast (index) pre-scan to locate README files
-    //
-    // merging the two and walking the tree instead of the index would also allow
-    // for sorting the file tree pages (directories first, alphabetical, etc.)
-    generate_file_pages();
+    find_readme();
     generate_tree_pages(m_tree);
     generate_commit_pages();
 }
 
 static size_t LINE_SIZE_EST = 50;
 
-void RepoHtmlGen::generate_file_code_page(const fs::path &file_path, std::string &html)
+void RepoHtmlGen::generate_file_code_page(const std::string &filename, git_blob *blob, std::string &html)
 {
+    const char *raw_content = (const char *)git_blob_rawcontent(blob);
+    size_t filesize = git_blob_rawsize(blob);
+
+    std::string content(raw_content, filesize);
+    std::istringstream ss(content);
 #ifndef HIGHLIGHT
-    std::ifstream in_stream(file_path, std::ios::in);
-    if (!in_stream.is_open()) {
-        html = "File could not be opened.";
-        return;
-    }
-
-    in_stream.seekg(0, std::ios::end);
-    size_t filesize = in_stream.tellg();
-    in_stream.seekg(0, std::ios::beg);
-    if (filesize > m_options.max_view_filesize) {
-        html = "File is too large to view.";
-        return;
-    }
-
     html.reserve(filesize + (filesize / LINE_SIZE_EST) * sizeof(file_line_template));
 
     std::string line;
     size_t line_no = 0;
-    while (std::getline(in_stream, line)) {
+    while (std::getline(ss, line)) {
         line_no++;
         html += fmt::format(
             file_line_template,
@@ -168,25 +195,11 @@ void RepoHtmlGen::generate_file_code_page(const fs::path &file_path, std::string
         );
     }
 #else
-    std::ifstream in_stream(file_path, std::ios::in | std::ios::binary);
-    if (!in_stream.is_open()) {
-        html = "File could not be opened.";
-        return;
-    }
-
-    in_stream.seekg(0, std::ios::end);
-    size_t filesize = in_stream.tellg();
-    in_stream.seekg(0, std::ios::beg);
-    if (filesize > m_options.max_view_filesize) {
-        html = "File is too large to view.";
-        return;
-    }
-
     std::stringbuf obuf;
-    std::istream base_stream(in_stream.rdbuf());
+    std::istream base_stream(ss.rdbuf());
     std::ostream out_stream(&obuf);
  
-    highlight(file_path.filename(), base_stream, out_stream);
+    highlight(filename, base_stream, out_stream);
     html = std::move(obuf.str());
 
     // I'm not sure why SourceHighlight leaves a trailing line by default
@@ -197,25 +210,25 @@ void RepoHtmlGen::generate_file_code_page(const fs::path &file_path, std::string
 #endif
 }
 
-void RepoHtmlGen::generate_file_page(const git_index_entry *entry)
+void RepoHtmlGen::generate_file_page(const git_tree_entry *entry)
 {
-    fs::path file_path = m_repo_path + '/' + entry->path;
+    const char *entry_name = git_tree_entry_name(entry);
 
-    fs::path html_path = "public/" + m_repo_name + "/files/" + std::string(entry->path) + ".html";
+    fs::path html_path = "public/" + m_repo_name + "/files/" + entry_name + ".html";
     if (!fs::exists(html_path.parent_path()))
         fs::create_directories(html_path.parent_path());
 
     git_object *obj;
-    if ((m_err = git_object_lookup(&obj, m_repo, &entry->id, GIT_OBJ_ANY)) < 0)
+    if ((m_err = git_object_lookup(&obj, m_repo, git_tree_entry_id(entry), GIT_OBJ_ANY)) < 0)
         error("failed to lookup git object from index entry");
 
     std::string html_file_content;
     if (git_blob_is_binary((git_blob *)obj))
         html_file_content = "This is a binary file.";
     else
-        generate_file_code_page(file_path, html_file_content);
+        generate_file_code_page(fs::path(entry_name).filename(), (git_blob *)obj, html_file_content);
 
-    std::ofstream out_stream("public/" + m_repo_name + "/files/" + std::string(entry->path) + ".html",
+    std::ofstream out_stream("public/" + m_repo_name + "/files/" + entry_name + ".html",
             std::ios::out);
     if (!out_stream.is_open())
         error("failed to open output file.");
@@ -225,11 +238,11 @@ void RepoHtmlGen::generate_file_page(const git_index_entry *entry)
         file_page_template,
         fmt::arg("header_content", m_header_content),
         fmt::arg("repo_name", m_repo_name),
-        fmt::arg("filename", entry->path),
+        fmt::arg("filename", entry_name),
         fmt::arg("fileview_content",
             fmt::format(
                 file_view_template,
-                fmt::arg("filename", entry->path),
+                fmt::arg("filename", entry_name),
                 fmt::arg("file_content", html_file_content),
                 fmt::arg("file_size", size_info.first),
                 fmt::arg("file_size_unit", size_info.second)
@@ -239,64 +252,6 @@ void RepoHtmlGen::generate_file_page(const git_index_entry *entry)
 
     git_object_free(obj);
 }
-
-void RepoHtmlGen::generate_file_pages()
-{
-    size_t file_count = git_index_entrycount(m_index);
-    for (size_t i = 0; i < file_count; i++) {
-        auto *entry = git_index_get_byindex(m_index, i);
-        generate_file_page(entry);
-
-        std::string filename = std::string(entry->path);
-        if (is_readme(filename)) {
-#ifndef MARKDOWN
-            std::string readme_content;
-            generate_file_code_page(m_repo_path + '/' + entry->path, readme_content);
-            m_readme_content = fmt::format(
-                 file_view_template,
-                 fmt::arg("filename", entry->path),
-                 fmt::arg("file_content", readme_content),
-                 fmt::arg("file_size", ""),
-                 fmt::arg("file_size_unit", "")
-            );
-#else
-            auto result = render_markdown(m_repo_path + '/' + entry->path, m_readme_content);
-            if (result == MarkdownResult::FAILURE)
-                error("failed to render markdown");
-            m_readme_content.insert(0, markdown_pre);
-            m_readme_content.append(markdown_post);
-#endif
-        }
-    }
-}
-
-/*
-git_commit *RepoHtmlGen::file_last_modified(git_object *obj)
-{
-    git_revwalk *walk = nullptr;
-    if ((m_err = git_revwalk_new(&walk, m_repo)) < 0)
-        error("failed to create git revwalk");
-
-    const git_oid *obj_oid = git_object_id(obj);
-    git_oid oid;
-
-    git_revwalk_push_head(walk);
-    git_revwalk_sorting(walk, GIT_SORT_TOPOLOGICAL | GIT_SORT_TIME);
-    //git_revwalk_simplify_first_parent(walk);
-
-    while (git_revwalk_next(&oid, walk) == 0) {
-        if (git_oid_cmp(obj_oid, &oid) == 0)
-            break;
-    }
-
-    git_commit *ret = nullptr;
-    if ((m_err = git_commit_lookup(&ret, m_repo, &oid)) < 0)
-        error("failed to lookup commit");
-    git_revwalk_free(walk);
-
-    return ret;
-}
-*/
 
 void RepoHtmlGen::generate_tree_pages(git_tree *tree, std::string root)
 {
@@ -336,6 +291,8 @@ void RepoHtmlGen::generate_tree_pages(git_tree *tree, std::string root)
             git_object_free(obj);
             continue;
         }
+
+        generate_file_page(entry);
 
         auto size_info = format_filesize(git_blob_rawsize((git_blob *)obj));
         tree_html += fmt::format(
@@ -562,7 +519,6 @@ void RepoHtmlGen::generate_commit_pages()
     git_revwalk_simplify_first_parent(walk);
 
     std::string commits_html;
-    // crude estimation
     commits_html.reserve(m_options.max_commits * sizeof(commits_line_template));
 
     while (git_revwalk_next(&oid, walk) == 0) {

@@ -8,6 +8,6 @@ enum class MarkdownResult {
     FAILURE,
 };
 
-MarkdownResult render_markdown(const std::string &file_path, std::string &html);
+MarkdownResult render_markdown(const char *raw, size_t raw_size, std::string &html);
 
 #endif
