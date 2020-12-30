@@ -1,5 +1,7 @@
 # gitgen - static webpage generator for git
 
+You can find an instance of this [here](https://git.frady.org/).
+
 ## Installation
 
 ```
