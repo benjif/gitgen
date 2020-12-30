@@ -60,4 +60,4 @@ const char *diff_max_line_count =
     "<div class=\"diff_max\">Max diff line count reached.</div>";
 
 const char *index_line_template =
-    "<tr><td><a href=\"/{name}\">{name}</a></td><td>{desc}</td><td>{author}</td><td>{updated}</td></tr>";
+    "<tr><td><a href=\"/{name}\">{name}</a></td><td>{desc}</td><td>{updated}</td></tr>";

@@ -99,7 +99,6 @@ void IndexHtmlGen::generate()
             index_line_template,
             fmt::arg("name", repo_info.name),
             fmt::arg("desc", repo_info.description),
-            fmt::arg("author", ""),
             fmt::arg("updated", to_string(git_commit_time(head)))
         );
 

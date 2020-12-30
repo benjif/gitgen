@@ -11,7 +11,6 @@ R"(<!DOCTYPE html>
 <tr class="toptr">
 <th style="text-align: left;">Name</th>
 <th style="text-align: left;">Description</th>
-<th style="text-align: left;">Author</th>
 <th style="text-align: left;">Updated</th>
 <tr>
 </thead>

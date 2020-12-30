@@ -11,7 +11,7 @@
 
 class RepoHtmlGen {
 public:
-    static const size_t MAX_COMMIT_COUNT = 100;
+    static const size_t MAX_COMMIT_COUNT = 128;
     static const size_t MAX_DIFF_LINE_COUNT = 1024;
     static const size_t MAX_VIEW_FILESIZE = 0x400 * 256; // 256 KiB
 

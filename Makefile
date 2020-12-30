@@ -1,5 +1,9 @@
 NAME = gitgen
 
+ifeq ($(PREFIX),)
+	PREFIX := /usr/local
+endif
+
 HILI_DIR := /usr/share/source-highlight/
 
 BASEFLAGS := -Wall -Wextra -std=c++20 -lgit2 \
@@ -40,6 +44,13 @@ ifneq ($(shell id -u), 0)
 else
 	cp source-highlight/html_gitgen.outlang $(HILI_DIR)
 endif
+
+install:
+	install gitgen $(PREFIX)/bin
+
+uninstall:
+	rm -f $(PREFIX)/bin/gitgen
+	rm -f $(HILI_DIR)/html_gitgen.outlang
 
 clean:
 	find . -name "*.o" -type f -delete

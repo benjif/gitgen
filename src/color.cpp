@@ -4,8 +4,6 @@
 
 #define SRCHILI_DIR "/usr/share/source-highlight"
 
-
-
 void highlight(const std::string &filename, std::istream &in, std::ostream &out)
 {
     srchilite::SourceHighlight src_hili("html_gitgen.outlang");
