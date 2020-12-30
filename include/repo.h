@@ -40,7 +40,7 @@ private:
     void find_readme();
 
     void generate_file_code_page(const std::string &filename, git_blob *blob, std::string &html);
-    void generate_file_page(const git_tree_entry *entry);
+    void generate_file_page(const std::filesystem::path &file_path, const git_tree_entry *entry);
     void generate_file_pages();
     void generate_tree_pages(git_tree *tree, std::string root = "");
 

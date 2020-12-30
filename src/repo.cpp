@@ -210,11 +210,11 @@ void RepoHtmlGen::generate_file_code_page(const std::string &filename, git_blob 
 #endif
 }
 
-void RepoHtmlGen::generate_file_page(const git_tree_entry *entry)
+void RepoHtmlGen::generate_file_page(const fs::path &file_path, const git_tree_entry *entry)
 {
     const char *entry_name = git_tree_entry_name(entry);
 
-    fs::path html_path = "public/" + m_repo_name + "/files/" + entry_name + ".html";
+    fs::path html_path = "public/" + m_repo_name + "/files/" + std::string(file_path) + ".html";
     if (!fs::exists(html_path.parent_path()))
         fs::create_directories(html_path.parent_path());
 
@@ -228,8 +228,7 @@ void RepoHtmlGen::generate_file_page(const git_tree_entry *entry)
     else
         generate_file_code_page(fs::path(entry_name).filename(), (git_blob *)obj, html_file_content);
 
-    std::ofstream out_stream("public/" + m_repo_name + "/files/" + entry_name + ".html",
-            std::ios::out);
+    std::ofstream out_stream(html_path, std::ios::out);
     if (!out_stream.is_open())
         error("failed to open output file.");
 
@@ -292,7 +291,7 @@ void RepoHtmlGen::generate_tree_pages(git_tree *tree, std::string root)
             continue;
         }
 
-        generate_file_page(entry);
+        generate_file_page(root + entry_name, entry);
 
         auto size_info = format_filesize(git_blob_rawsize((git_blob *)obj));
         tree_html += fmt::format(
