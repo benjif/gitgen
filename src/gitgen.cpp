@@ -1,5 +1,4 @@
 #include <string>
-#include <variant>
 #include <fmt/core.h>
 #include <fmt/format.h>
 #include "repo.h"
@@ -16,15 +15,12 @@ static void usage(char *name)
 
 struct Args {
     Args(size_t argc, char **argv);
-    ~Args();
 
     enum class CmdType {
         None,
         Repo,
         Index
     } cmd_type { CmdType::None };
-
-    //std::variant<RepoHtmlGen::Options, IndexHtmlGen::Options> options;
 
     RepoHtmlGen::Options repo_options;
     IndexHtmlGen::Options index_options;
@@ -102,8 +98,4 @@ Args::Args(size_t argc, char **argv)
         usage(argv[0]);
     if (cmd_type == CmdType::Index && index_options.repo_paths.size() == 0)
         usage(argv[0]);
-}
-
-Args::~Args()
-{
 }

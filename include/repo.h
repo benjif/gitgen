@@ -39,10 +39,10 @@ private:
     git_commit *last_commit();
     //git_commit *file_last_modified(git_object *obj);
 
-    void generate_file_page_code(const std::filesystem::path &file_path, std::string &html);
+    void generate_file_code_page(const std::filesystem::path &file_path, std::string &html);
     void generate_file_page(const git_index_entry *entry);
-    void generate_files();
-    void generate_index(git_tree *tree, std::string root = "");
+    void generate_file_pages();
+    void generate_tree_pages(git_tree *tree, std::string root = "");
 
     struct Delta {
         git_patch *patch;
@@ -73,7 +73,7 @@ private:
 
     void get_commit_info(git_commit *commit, CommitInfo &info);
     void generate_commit_page(const CommitInfo &commit);
-    void generate_commits();
+    void generate_commit_pages();
 
     std::string m_repo_path;
     std::string m_repo_name;

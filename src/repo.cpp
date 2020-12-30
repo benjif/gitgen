@@ -126,19 +126,19 @@ git_commit *RepoHtmlGen::last_commit()
 
 void RepoHtmlGen::generate()
 {
-    // it might be more efficient to merge generate_files() and generate_index()
+    // it might be more efficient to merge generate_file_pages() and generate_tree_pages()
     // we would still need a fast (index) pre-scan to locate README files
     //
     // merging the two and walking the tree instead of the index would also allow
     // for sorting the file tree pages (directories first, alphabetical, etc.)
-    generate_files();
-    generate_index(m_tree);
-    generate_commits();
+    generate_file_pages();
+    generate_tree_pages(m_tree);
+    generate_commit_pages();
 }
 
 static size_t LINE_SIZE_EST = 50;
 
-void RepoHtmlGen::generate_file_page_code(const fs::path &file_path, std::string &html)
+void RepoHtmlGen::generate_file_code_page(const fs::path &file_path, std::string &html)
 {
 #ifndef HIGHLIGHT
     std::ifstream in_stream(file_path, std::ios::in);
@@ -212,7 +212,7 @@ void RepoHtmlGen::generate_file_page(const git_index_entry *entry)
     if (git_blob_is_binary((git_blob *)obj))
         html_file_content = "This is a binary file.";
     else
-        generate_file_page_code(file_path, html_file_content);
+        generate_file_code_page(file_path, html_file_content);
 
     std::ofstream out_stream("public/" + m_repo_name + "/files/" + std::string(entry->path) + ".html",
             std::ios::out);
@@ -239,7 +239,7 @@ void RepoHtmlGen::generate_file_page(const git_index_entry *entry)
     git_object_free(obj);
 }
 
-void RepoHtmlGen::generate_files()
+void RepoHtmlGen::generate_file_pages()
 {
     size_t file_count = git_index_entrycount(m_index);
     for (size_t i = 0; i < file_count; i++) {
@@ -250,7 +250,7 @@ void RepoHtmlGen::generate_files()
         if (is_readme(filename)) {
 #ifndef MARKDOWN
             std::string readme_content;
-            generate_file_page_code(m_repo_path + '/' + entry->path, readme_content);
+            generate_file_code_page(m_repo_path + '/' + entry->path, readme_content);
             m_readme_content = fmt::format(
                  file_view_template,
                  fmt::arg("filename", entry->path),
@@ -259,7 +259,9 @@ void RepoHtmlGen::generate_files()
                  fmt::arg("file_size_unit", "")
             );
 #else
-            render_markdown(m_repo_path + '/' + entry->path, m_readme_content);
+            auto result = render_markdown(m_repo_path + '/' + entry->path, m_readme_content);
+            if (result == MarkdownResult::FAILURE)
+                error("failed to render markdown");
 #endif
         }
     }
@@ -293,7 +295,7 @@ git_commit *RepoHtmlGen::file_last_modified(git_object *obj)
 }
 */
 
-void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
+void RepoHtmlGen::generate_tree_pages(git_tree *tree, std::string root)
 {
     fs::path html_path =
         root == "" ? "public/" + m_repo_name + "/index.html"
@@ -322,7 +324,7 @@ void RepoHtmlGen::generate_index(git_tree *tree, std::string root)
             error("failed to convert tree entry to object");
 
         if (git_tree_entry_type(entry) == GIT_OBJ_TREE) {
-            generate_index((git_tree *)obj, root + entry_name + '/');
+            generate_tree_pages((git_tree *)obj, root + entry_name + '/');
             tree_html += fmt::format(
                 file_tree_line_dir_template,
                 fmt::arg("file_tree_name", entry_name),
@@ -531,7 +533,7 @@ RepoHtmlGen::CommitInfo::~CommitInfo()
         git_patch_free(d.patch);
 }
 
-void RepoHtmlGen::generate_commits()
+void RepoHtmlGen::generate_commit_pages()
 {
     fs::path commits_dir = "public/" + m_repo_name + "/commits/";
     if (!fs::exists(commits_dir))
