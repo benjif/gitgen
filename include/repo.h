@@ -36,7 +36,7 @@ private:
     void cleanup();
     void error(const char *msg);
 
-    git_commit *last_commit();
+    const git_oid *head();
     //git_commit *file_last_modified(git_object *obj);
 
     void generate_file_code_page(const std::filesystem::path &file_path, std::string &html);
@@ -80,6 +80,7 @@ private:
     std::string m_header_content;
     std::string m_description;
 
+    const git_oid *m_head { nullptr };
     git_commit *m_head_commit { nullptr};
     git_repository *m_repo { nullptr };
     git_index *m_index { nullptr };

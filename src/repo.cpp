@@ -64,12 +64,15 @@ RepoHtmlGen::RepoHtmlGen(const Options &opt)
 {
     if ((m_err = git_libgit2_init()) < 0)
         error("failed to initialize libgit2");
-    if ((m_err = git_repository_open(&m_repo, m_repo_path.c_str())) < 0)
+    if ((m_err = git_repository_open_ext(&m_repo, m_repo_path.c_str(),
+                GIT_REPOSITORY_OPEN_NO_SEARCH, nullptr)) != 0)
         error("failed to open repository");
     if ((m_err = git_repository_index(&m_index, m_repo)) < 0)
         error("failed to retrieve repository index");
 
-    m_head_commit = last_commit();
+    m_head = head();
+    if ((m_err = git_commit_lookup(&m_head_commit, m_repo, m_head)) < 0)
+        error("failed to lookup HEAD commit");
     if ((m_err = git_commit_tree(&m_tree, m_head_commit)) < 0)
         error("failed to retrieve tree for HEAD commit");
 
@@ -111,17 +114,15 @@ RepoHtmlGen::RepoHtmlGen(const Options &opt)
         fs::remove_all("public/" + m_repo_name);
 }
 
-git_commit *RepoHtmlGen::last_commit()
+const git_oid *RepoHtmlGen::head()
 {
-    git_commit *commit;
-    git_oid oid_commit;
+    git_object *head_obj = nullptr;
+    const git_oid *head_oid = nullptr;
+    if (!git_revparse_single(&head_obj, m_repo, "HEAD"))
+        head_oid = git_object_id(head_obj);
 
-    if ((m_err = git_reference_name_to_id(&oid_commit, m_repo, "HEAD")) < 0)
-        error("failed to retrieve HEAD commit");
-    if ((m_err = git_commit_lookup(&commit, m_repo, &oid_commit)) < 0)
-        error("failed to retrieve HEAD commit");
-
-    return commit;
+    git_object_free(head_obj);
+    return head_oid;
 }
 
 void RepoHtmlGen::generate()
