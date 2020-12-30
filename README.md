@@ -1,18 +1,16 @@
-# gitgen - static HTML generator for git repositories
+# gitgen - static webpage generator for git
 
-## Building
-
-### Without syntax highlighting
+## Installation
 
 ```
+# For optional syntax highlighting
+GG_COLOR=TRUE
+sudo make install-color
+
+# For optional markdown rendering
+GG_MARKDOWN=TRUE
+
 make && sudo make install
-```
-
-### With syntax highlighting
-
-```
-COLOR=TRUE make
-sudo make install-color && sudo make install
 ```
 
 ## Usage
@@ -30,14 +28,15 @@ sudo make install-color && sudo make install
 ./gitgen index <repo path>...
 ```
 
-## Syntax Highlighting
+## Syntax Highlighting and Markdown Rendering
 
-Syntax highlighting requires [GNU source-highlight](https://www.gnu.org/software/src-highlite/). Note that syntax highlighting currently slows generation by around ~2x.
+Syntax highlighting requires [GNU source-highlight](https://www.gnu.org/software/src-highlite/) and markdown rendering requires [md4c](https://github.com/mity/md4c). Note that syntax highlighting currently slows generation by around ~2x.
 
 ## Dependencies
 
-* libgit2
-* (optional) libsource-highlight and source-highlight
+* [libgit2](https://libgit2.org/)
+* [libsource-highlight](https://www.gnu.org/software/src-highlite/) (optional, for highlighting)
+* [md4c](https://github.com/mity/md4c) (optional, for markdown rendering)
 
 ## Other Projects
 

@@ -6,22 +6,24 @@ endif
 
 HILI_DIR := /usr/share/source-highlight/
 
-BASEFLAGS := -Wall -Wextra -std=c++20 -lgit2 \
+CFLAGS := -Wall -Wextra -std=c++20 -lgit2 \
 	-L/usr/local/lib -Iinclude -I/usr/local/include -I. \
-	-D FMT_HEADER_ONLY -g #-O2
+	-DFMT_HEADER_ONLY -O3
 
-BASE_OBJ_FILES := src/gitgen.o \
+OBJ_FILES := src/gitgen.o \
 	src/templates.o	\
 	src/index.o	\
 	src/repo.o
 
-ifeq ($(COLOR), TRUE)
-CFLAGS := $(BASEFLAGS) `pkg-config --libs --cflags source-highlight` \
-	-D HIGHLIGHT
-OBJ_FILES := $(BASE_OBJ_FILES) src/color.o
-else
-CFLAGS := $(BASEFLAGS)
-OBJ_FILES := $(BASE_OBJ_FILES)
+ifeq ($(GG_COLOR), TRUE)
+CFLAGS := $(CFLAGS) `pkg-config --libs --cflags source-highlight` \
+	-DHIGHLIGHT
+OBJ_FILES := $(OBJ_FILES) src/color.o
+endif
+
+ifeq ($(GG_MARKDOWN), TRUE)
+CFLAGS := -DMARKDOWN -lmd4c-html $(CFLAGS)
+OBJ_FILES := $(OBJ_FILES) src/markdown.o
 endif
 
 release:

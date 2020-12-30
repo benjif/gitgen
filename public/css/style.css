@@ -78,6 +78,10 @@ ul#reponav {
     content: ' - ';
 }
 
+table tr:hover td {
+    background-color: #e0e0e0;
+}
+
 table td, table th {
     padding-left: 8px;
     padding-right: 8px;
@@ -91,9 +95,11 @@ table#commits tr:nth-child(odd) {
     background-color: #fff;
 }
 
+/*
 table#commits tr:nth-child(even) {
-    background-color: #eee;
+    background-color: #efefef;
 }
+*/
 
 table#repotree {
     width: 100%;
@@ -103,9 +109,11 @@ table#repotree tr:nth-child(odd) {
     background-color: #fff;
 }
 
+/*
 table#repotree tr:nth-child(even) {
-    background-color: #eee;
+    background-color: #efefef;
 }
+*/
 
 table#repotree .filename {
     width: 82%;
@@ -126,6 +134,37 @@ tr.toptr td {
 
 #readmeview {
     margin-top: 20px;
+}
+
+#readmeview h1,
+#readmeview h2,
+#readmeview h3,
+#readmeview h4,
+#readmeview h5,
+#readmeview h6 {
+    font-size: 9pt;
+    font-weight: normal;
+}
+
+#readmeview h1 {
+    margin-top: 24px;
+    font-weight: 700;
+}
+
+#readmeview h2 {
+    margin-top: 18px;
+    font-weight: 600;
+}
+
+#readmeview h3 {
+    margin-top: 14px;
+    font-weight: 500;
+}
+
+#readmeview pre {
+    margin-left: 10px;
+    padding-left: 8px;
+    border-left: 1px solid black;
 }
 
 .diff_add {
@@ -198,9 +237,11 @@ table#repos tr:nth-child(odd) {
     background-color: #fff;
 }
 
+/*
 table#repos tr:nth-child(even) {
-    background-color: #eee;
+    background-color: #efefef;
 }
+*/
 
 #treepath {
     padding-bottom: 4px;

@@ -19,6 +19,10 @@
 #include "color.h"
 #endif
 
+#ifdef MARKDOWN
+#include "markdown.h"
+#endif
+
 namespace fs = std::filesystem;
 
 static inline bool is_readme(std::string &filename)
@@ -42,24 +46,16 @@ void RepoHtmlGen::cleanup()
     git_libgit2_shutdown();
 }
 
+RepoHtmlGen::~RepoHtmlGen()
+{
+    cleanup();
+}
+
 void RepoHtmlGen::error(const char *msg)
 {
     fmt::print(stderr, "Error occurred (code: {}): {}\n", m_err, msg);
     cleanup();
     exit(1);
-}
-
-git_commit *RepoHtmlGen::last_commit()
-{
-    git_commit *commit;
-    git_oid oid_commit;
-
-    if ((m_err = git_reference_name_to_id(&oid_commit, m_repo, "HEAD")) < 0)
-        error("failed to retrieve HEAD commit");
-    if ((m_err = git_commit_lookup(&commit, m_repo, &oid_commit)) < 0)
-        error("failed to retrieve HEAD commit");
-
-    return commit;
 }
 
 RepoHtmlGen::RepoHtmlGen(const Options &opt)
@@ -92,15 +88,15 @@ RepoHtmlGen::RepoHtmlGen(const Options &opt)
 
     if (fs::exists(m_repo_path + "/description")) {
         std::ifstream in_stream(m_repo_path + "/description");
-        std::ostringstream in_sstream;
-        in_sstream << in_stream.rdbuf();
-        m_description = escape_string(in_sstream.str());
+        std::ostringstream ss;
+        ss << in_stream.rdbuf();
+        m_description = escape_string(ss.str());
     } else if (fs::exists(m_repo_path + "/.git/description")) {
         std::ifstream in_stream(m_repo_path + "/.git/description");
-        std::ostringstream in_sstream;
-        in_sstream << in_stream.rdbuf();
-        if (in_sstream.str() != default_description)
-            m_description = escape_string(in_sstream.str());
+        std::ostringstream ss;
+        ss << in_stream.rdbuf();
+        if (ss.str() != default_description)
+            m_description = escape_string(ss.str());
     }
 
     m_header_content = fmt::format(
@@ -115,9 +111,17 @@ RepoHtmlGen::RepoHtmlGen(const Options &opt)
         fs::remove_all("public/" + m_repo_name);
 }
 
-RepoHtmlGen::~RepoHtmlGen()
+git_commit *RepoHtmlGen::last_commit()
 {
-    cleanup();
+    git_commit *commit;
+    git_oid oid_commit;
+
+    if ((m_err = git_reference_name_to_id(&oid_commit, m_repo, "HEAD")) < 0)
+        error("failed to retrieve HEAD commit");
+    if ((m_err = git_commit_lookup(&commit, m_repo, &oid_commit)) < 0)
+        error("failed to retrieve HEAD commit");
+
+    return commit;
 }
 
 void RepoHtmlGen::generate()
@@ -244,6 +248,7 @@ void RepoHtmlGen::generate_files()
 
         std::string filename = std::string(entry->path);
         if (is_readme(filename)) {
+#ifndef MARKDOWN
             std::string readme_content;
             generate_file_page_code(m_repo_path + '/' + entry->path, readme_content);
             m_readme_content = fmt::format(
@@ -253,6 +258,9 @@ void RepoHtmlGen::generate_files()
                  fmt::arg("file_size", ""),
                  fmt::arg("file_size_unit", "")
             );
+#else
+            render_markdown(m_repo_path + '/' + entry->path, m_readme_content);
+#endif
         }
     }
 }
