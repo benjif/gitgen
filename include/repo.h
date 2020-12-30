@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <filesystem>
 #include <git2.h>
 #include <git2/global.h>
 
@@ -38,7 +39,7 @@ private:
     git_commit *last_commit();
     //git_commit *file_last_modified(git_object *obj);
 
-    void generate_file_page_code(const std::string &file_path, std::string &html);
+    void generate_file_page_code(const std::filesystem::path &file_path, std::string &html);
     void generate_file_page(const git_index_entry *entry);
     void generate_files();
     void generate_index(git_tree *tree, std::string root = "");

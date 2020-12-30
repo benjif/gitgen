@@ -47,8 +47,8 @@ ol#codeblock {
 #codeblock li pre::before {
     margin-right: 10px;
     padding-right: 4px;
-    width: 1.5em;
-    text-align: center;
+    width: 2em;
+    text-align: right;
     display: inline-block;
     color: #888;
     font-size: 12px;

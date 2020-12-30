@@ -15,6 +15,10 @@
 #include "extra.h"
 #include "templates.h"
 
+#ifdef HIGHLIGHT
+#include "color.h"
+#endif
+
 namespace fs = std::filesystem;
 
 static inline bool is_readme(std::string &filename)
@@ -130,8 +134,9 @@ void RepoHtmlGen::generate()
 
 static size_t LINE_SIZE_EST = 50;
 
-void RepoHtmlGen::generate_file_page_code(const std::string &file_path, std::string &html)
+void RepoHtmlGen::generate_file_page_code(const fs::path &file_path, std::string &html)
 {
+#ifndef HIGHLIGHT
     std::ifstream in_stream(file_path, std::ios::in);
     if (!in_stream.is_open()) {
         html = "File could not be opened.";
@@ -140,13 +145,13 @@ void RepoHtmlGen::generate_file_page_code(const std::string &file_path, std::str
 
     in_stream.seekg(0, std::ios::end);
     size_t filesize = in_stream.tellg();
+    in_stream.seekg(0, std::ios::beg);
     if (filesize > m_options.max_view_filesize) {
         html = "File is too large to view.";
         return;
     }
 
     html.reserve(filesize + (filesize / LINE_SIZE_EST) * sizeof(file_line_template));
-    in_stream.seekg(0, std::ios::beg);
 
     std::string line;
     size_t line_no = 0;
@@ -157,6 +162,34 @@ void RepoHtmlGen::generate_file_page_code(const std::string &file_path, std::str
             fmt::arg("line", escape_string(line))
         );
     }
+#else
+    std::ifstream in_stream(file_path, std::ios::in | std::ios::binary);
+    if (!in_stream.is_open()) {
+        html = "File could not be opened.";
+        return;
+    }
+
+    in_stream.seekg(0, std::ios::end);
+    size_t filesize = in_stream.tellg();
+    in_stream.seekg(0, std::ios::beg);
+    if (filesize > m_options.max_view_filesize) {
+        html = "File is too large to view.";
+        return;
+    }
+
+    std::stringbuf obuf;
+    std::istream base_stream(in_stream.rdbuf());
+    std::ostream out_stream(&obuf);
+ 
+    highlight(file_path.filename(), base_stream, out_stream);
+    html = std::move(obuf.str());
+
+    // I'm not sure why SourceHighlight leaves a trailing line by default
+    // TODO: come back later and figure it out
+    size_t last_newline_pos = html.find_last_of('\n');
+    if (last_newline_pos != std::string::npos)
+        html.resize(last_newline_pos);
+#endif
 }
 
 void RepoHtmlGen::generate_file_page(const git_index_entry *entry)

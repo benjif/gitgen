@@ -1,0 +1,22 @@
+# custom outlang for gitgen
+include "html_common.outlang"
+
+# line numbers are in a separate column (and start the column for the code)
+linenum "<div style=\"display: none;\">$text</div>"
+lineprefix "<li><pre>"
+
+doctemplate
+""
+"</pre></li>"
+end
+
+nodoctemplate
+""
+"</pre></li>"
+end
+
+# terminate each line by closing the table column and the table row
+translations
+"\n"
+"</pre></li>\n"
+end

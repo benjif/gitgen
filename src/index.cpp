@@ -58,6 +58,9 @@ IndexHtmlGen::IndexHtmlGen(const Options &opt)
         else
             meta.name = meta.path.substr(path_split_pos + 1);
 
+        to_lowercase(meta.name);
+        escape_string(meta.name);
+
         if (fs::exists(meta.path + "/description")) {
             std::ifstream in_stream(meta.path + "/description");
             std::ostringstream in_sstream;
@@ -70,9 +73,6 @@ IndexHtmlGen::IndexHtmlGen(const Options &opt)
             if (in_sstream.str() != default_description)
                 meta.description = escape_string(in_sstream.str());
         }
-
-        to_lowercase(meta.name);
-        escape_string(meta.name);
 
         m_repos.push_back(meta);
     }
