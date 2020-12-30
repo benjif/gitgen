@@ -92,18 +92,15 @@ RepoHtmlGen::RepoHtmlGen(const Options &opt)
 
     to_lowercase(m_repo_name);
 
-    if (fs::exists(m_repo_path + "/description")) {
-        std::ifstream in_stream(m_repo_path + "/description");
-        std::ostringstream ss;
-        ss << in_stream.rdbuf();
-        m_description = escape_string(ss.str());
-    } else if (fs::exists(m_repo_path + "/.git/description")) {
-        std::ifstream in_stream(m_repo_path + "/.git/description");
-        std::ostringstream ss;
-        ss << in_stream.rdbuf();
-        if (ss.str() != default_description)
-            m_description = escape_string(ss.str());
-    }
+    std::ifstream in_stream;
+    std::ostringstream ss;
+    if (fs::exists(m_repo_path + "/description"))
+        in_stream.open(m_repo_path + "/description");
+    else if (fs::exists(m_repo_path + "/.git/description"))
+        in_stream.open(m_repo_path + "/.git/description");
+
+    ss << in_stream.rdbuf();
+    m_description = escape_string(ss.str());
 
     m_header_content = fmt::format(
         header_template,

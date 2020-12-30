@@ -10,9 +10,6 @@
 #define MiB 0x100000
 #define KiB 0x400
 
-static const char *default_description =
-    "Unnamed repository; edit this file 'description' to name the repository.\n";
-
 inline std::string escape_string(const std::string &str)
 {
     std::string out;

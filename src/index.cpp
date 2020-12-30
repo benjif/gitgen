@@ -64,18 +64,15 @@ IndexHtmlGen::IndexHtmlGen(const Options &opt)
         to_lowercase(meta.name);
         escape_string(meta.name);
 
-        if (fs::exists(meta.path + "/description")) {
-            std::ifstream in_stream(meta.path + "/description");
-            std::ostringstream in_sstream;
-            in_sstream << in_stream.rdbuf();
-            meta.description = escape_string(in_sstream.str());
-        } else if (fs::exists(meta.path + "/.git/description")) {
-            std::ifstream in_stream(meta.path + "/.git/description");
-            std::ostringstream in_sstream;
-            in_sstream << in_stream.rdbuf();
-            if (in_sstream.str() != default_description)
-                meta.description = escape_string(in_sstream.str());
-        }
+        std::ifstream in_stream;
+        std::ostringstream ss;
+        if (fs::exists(meta.path + "/description"))
+            in_stream.open(meta.path + "/description");
+        else if (fs::exists(meta.path + "/.git/description"))
+            in_stream.open(meta.path + "/.git/description");
+
+        ss << in_stream.rdbuf();
+        meta.description = escape_string(ss.str());
 
         m_repos.push_back(meta);
     }
