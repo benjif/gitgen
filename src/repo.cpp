@@ -8,7 +8,6 @@
 #include <iostream>
 #include <algorithm>
 #include <filesystem>
-#include <unordered_set>
 #include <fmt/core.h>
 #include <fmt/format.h>
 #include "repo.h"
@@ -173,7 +172,7 @@ void RepoHtmlGen::generate()
     generate_commit_pages();
 }
 
-static size_t LINE_SIZE_EST = 50;
+static const size_t LINE_SIZE_EST = 50;
 
 void RepoHtmlGen::generate_file_code_page(const std::string &filename, git_blob *blob, std::string &html)
 {
