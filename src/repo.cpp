@@ -24,14 +24,6 @@
 
 namespace fs = std::filesystem;
 
-static inline bool is_readme(std::string &filename)
-{
-    to_lowercase(filename);
-    if (filename == "readme.md" || filename == "readme.txt")
-        return true;
-    return false;
-}
-
 void RepoHtmlGen::cleanup()
 {
     if (m_repo)
@@ -70,6 +62,8 @@ RepoHtmlGen::RepoHtmlGen(const Options &opt)
         error("failed to retrieve repository index");
 
     m_head = head();
+    if (!m_head)
+        error("failed to retrieve HEAD object id");
     if ((m_err = git_commit_lookup(&m_head_commit, m_repo, m_head)) < 0)
         error("failed to lookup HEAD commit");
     if ((m_err = git_commit_tree(&m_tree, m_head_commit)) < 0)
@@ -113,7 +107,7 @@ RepoHtmlGen::RepoHtmlGen(const Options &opt)
         fs::remove_all("public/" + m_repo_name);
 }
 
-const git_oid *RepoHtmlGen::head()
+const git_oid *RepoHtmlGen::head() const
 {
     git_object *head_obj = nullptr;
     const git_oid *head_oid = nullptr;
@@ -152,11 +146,13 @@ void RepoHtmlGen::find_readme()
                 (const char *)git_blob_rawcontent((git_blob *)readme_obj);
             size_t raw_readme_size = git_blob_rawsize((git_blob *)readme_obj);
 
+            m_readme_content.reserve(raw_readme_size);
+            m_readme_content.append(markdown_pre);
+
             auto result = render_markdown(raw_readme_content, raw_readme_size, m_readme_content);
             if (result == MarkdownResult::FAILURE)
                 error("failed to render markdown");
 
-            m_readme_content.insert(0, markdown_pre);
             m_readme_content.append(markdown_post);
 #endif
             git_object_free(readme_obj);
@@ -172,26 +168,32 @@ void RepoHtmlGen::generate()
     generate_commit_pages();
 }
 
+struct SingleUseBuf : public std::streambuf {
+    SingleUseBuf(char *start, size_t len)
+    {
+        setg(start, start, start + len - 1);
+    }
+};
+
 static const size_t LINE_SIZE_EST = 50;
 
 void RepoHtmlGen::generate_file_code_page(const std::string &filename, git_blob *blob, std::string &html)
 {
-    const char *raw_content = (const char *)git_blob_rawcontent(blob);
+    char *raw_content = (char *)git_blob_rawcontent(blob);
     size_t filesize = git_blob_rawsize(blob);
-
     if (filesize >= m_options.max_view_filesize) {
         html += "File is too large to view.";
         return;
     }
 
-    std::string content(raw_content, filesize);
-    std::istringstream ss(content);
+    SingleUseBuf buf(raw_content, filesize);
+    std::istream in_stream(&buf);
 #ifndef HIGHLIGHT
     html.reserve(filesize + (filesize / LINE_SIZE_EST) * sizeof(file_line_template));
 
     std::string line;
     size_t line_no = 0;
-    while (std::getline(ss, line)) {
+    while (std::getline(in_stream, line)) {
         line_no++;
         html += fmt::format(
             file_line_template,
@@ -200,17 +202,10 @@ void RepoHtmlGen::generate_file_code_page(const std::string &filename, git_blob 
     }
 #else
     std::stringbuf obuf;
-    std::istream base_stream(ss.rdbuf());
     std::ostream out_stream(&obuf);
  
-    highlight(filename, base_stream, out_stream);
+    highlight(filename, in_stream, out_stream);
     html = std::move(obuf.str());
-
-    // I'm not sure why SourceHighlight leaves a trailing line by default
-    // TODO: come back later and figure it out
-    size_t last_newline_pos = html.find_last_of('\n');
-    if (last_newline_pos != std::string::npos)
-        html.resize(last_newline_pos);
 #endif
 }
 
@@ -230,7 +225,7 @@ void RepoHtmlGen::generate_file_page(const fs::path &file_path, const git_tree_e
     if (git_blob_is_binary((git_blob *)obj))
         html_file_content = "This is a binary file.";
     else
-        generate_file_code_page(fs::path(entry_name).filename(), (git_blob *)obj, html_file_content);
+        generate_file_code_page(entry_name, (git_blob *)obj, html_file_content);
 
     std::ofstream out_stream(html_path, std::ios::out);
     if (!out_stream.is_open())
@@ -402,8 +397,8 @@ void RepoHtmlGen::get_commit_info(git_commit *commit, CommitInfo &info)
         }
     } else {
         info.parent = nullptr;
-        info.parent_tree = nullptr;
         info.parent_id = nullptr;
+        info.parent_tree = nullptr;
     }
 
     git_diff_options diff_options;

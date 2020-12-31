@@ -11,15 +11,15 @@
 
 class RepoHtmlGen {
 public:
-    static const size_t MAX_COMMIT_COUNT = 128;
-    static const size_t MAX_DIFF_LINE_COUNT = 1024;
-    static const size_t MAX_VIEW_FILESIZE = 0x400 * 256; // 256 KiB
+    static const size_t DEFAULT_MAX_COMMITS = 128;
+    static const size_t DEFAULT_MAX_DIFF_LINES = 1024;
+    static const size_t DEFAULT_MAX_VIEW_FILESIZE = 0x400 * 512; // 512 KiB
 
     struct Options {
         std::string repo_path;
-        size_t max_commits { MAX_COMMIT_COUNT };
-        size_t max_diff_lines { MAX_DIFF_LINE_COUNT };
-        size_t max_view_filesize { MAX_VIEW_FILESIZE };
+        size_t max_commits { DEFAULT_MAX_COMMITS };
+        size_t max_diff_lines { DEFAULT_MAX_DIFF_LINES };
+        size_t max_view_filesize { DEFAULT_MAX_VIEW_FILESIZE };
     };
 
     RepoHtmlGen(const Options &opt);
@@ -30,13 +30,27 @@ public:
 private:
     Options m_options;
 
+    const git_oid *m_head { nullptr };
+    git_commit *m_head_commit { nullptr};
+    git_repository *m_repo { nullptr };
+    git_index *m_index { nullptr };
+    git_tree *m_tree { nullptr };
+    int m_err { 0 };
+
+    std::string m_repo_path;
+    std::string m_repo_name;
+    std::string m_description;
+    std::string m_header_content;
+
+    std::string m_readme_content;
+
     RepoHtmlGen(RepoHtmlGen &&) = delete;
     RepoHtmlGen(const RepoHtmlGen &) = delete;
 
     void cleanup();
     void error(const char *msg);
 
-    const git_oid *head();
+    const git_oid *head() const;
     void find_readme();
 
     void generate_file_code_page(const std::string &filename, git_blob *blob, std::string &html);
@@ -74,20 +88,6 @@ private:
     void get_commit_info(git_commit *commit, CommitInfo &info);
     void generate_commit_page(const CommitInfo &commit);
     void generate_commit_pages();
-
-    std::string m_repo_path;
-    std::string m_repo_name;
-    std::string m_header_content;
-    std::string m_description;
-
-    const git_oid *m_head { nullptr };
-    git_commit *m_head_commit { nullptr};
-    git_repository *m_repo { nullptr };
-    git_index *m_index { nullptr };
-    git_tree *m_tree { nullptr };
-    int m_err { 0 };
-
-    std::string m_readme_content;
 };
 
 #endif
