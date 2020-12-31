@@ -179,6 +179,11 @@ void RepoHtmlGen::generate_file_code_page(const std::string &filename, git_blob 
     const char *raw_content = (const char *)git_blob_rawcontent(blob);
     size_t filesize = git_blob_rawsize(blob);
 
+    if (filesize >= m_options.max_view_filesize) {
+        html += "File is too large to view.";
+        return;
+    }
+
     std::string content(raw_content, filesize);
     std::istringstream ss(content);
 #ifndef HIGHLIGHT
