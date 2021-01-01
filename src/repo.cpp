@@ -274,6 +274,8 @@ void RepoHtmlGen::generate_tree_pages(git_tree *tree, std::string root)
 
         if (!(entry = git_tree_entry_byindex(tree, i)))
             error("failed to retrieve tree entry");
+        if (git_tree_entry_type(entry) == GIT_OBJ_COMMIT)
+            continue;
         if (!(entry_name = git_tree_entry_name(entry)))
             error("failed to retrieve tree entry name");
         if ((m_err = git_tree_entry_to_object(&obj, m_repo, entry)) < 0)
